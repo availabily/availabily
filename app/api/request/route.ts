@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
+import { demoStore } from '@/lib/demo-store';
 import { sendSMS } from '@/lib/twilio';
 import { isSlotAvailable } from '@/lib/scheduling';
 import { isValidE164, toE164, formatPhone, formatTime, formatShortDay } from '@/lib/utils';
 import { nanoid } from 'nanoid';
+
+const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 interface RequestBody {
   handle: string;
@@ -44,6 +47,54 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid visitor phone number' }, { status: 400 });
   }
 
+  // ── Demo mode: use in-memory store ──
+  if (isDemo) {
+    const user = demoStore.getUserByHandle(handle);
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    if (demoStore.countPendingMeetings(user.phone, visitor_phone, twentyFourHoursAgo) >= 3) {
+      return NextResponse.json({ error: 'Too many pending requests.' }, { status: 429 });
+    }
+
+    const rules = demoStore.getTimeRules(user.phone);
+    const meetings = demoStore.getMeetingsByDate(user.phone, date);
+    if (!isSlotAvailable(date, start_time, rules, meetings, user.timezone)) {
+      return NextResponse.json({ error: 'This time slot is no longer available' }, { status: 409 });
+    }
+
+    const [h, m] = start_time.split(':').map(Number);
+    const end_time = `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    const confirm_token = nanoid(12);
+    const now = new Date().toISOString();
+
+    demoStore.createMeeting({
+      id: `meeting-${Math.random().toString(36).slice(2)}`,
+      user_phone: user.phone,
+      meeting_date: date,
+      start_time,
+      end_time,
+      visitor_name,
+      visitor_phone,
+      note: note || null,
+      status: 'pending',
+      confirm_token,
+      created_at: now,
+    });
+
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://availabily.com';
+    const smsBody = [
+      'New time request',
+      `${formatShortDay(date)} ${formatTime(start_time)}`,
+      `${visitor_name} – ${formatPhone(visitor_phone)}`,
+      note || null,
+      `Confirm: ${baseUrl}/c/${confirm_token}`,
+    ].filter(Boolean).join('\n');
+    await sendSMS(user.phone, smsBody);
+    return NextResponse.json({ success: true });
+  }
+
+  // ── Production: use Supabase ──
   const supabase = createServerClient();
 
   // Look up user by handle

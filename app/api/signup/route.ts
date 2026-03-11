@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
+import { demoStore } from '@/lib/demo-store';
 import { sendSMS } from '@/lib/twilio';
 import { isValidE164, toE164 } from '@/lib/utils';
+
+const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 interface DaySchedule {
   enabled: boolean;
@@ -42,6 +45,35 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Handle must be 2-30 lowercase alphanumeric characters or hyphens' }, { status: 400 });
   }
 
+  // ── Demo mode: use in-memory store ──
+  if (isDemo) {
+    if (demoStore.getUserByHandle(handle)) {
+      return NextResponse.json({ error: 'Handle is already taken' }, { status: 409 });
+    }
+    if (demoStore.getUserByPhone(phone)) {
+      return NextResponse.json({ error: 'Phone number is already registered' }, { status: 409 });
+    }
+    demoStore.createUser({ phone, handle, timezone, created_at: new Date().toISOString() });
+    if (schedule) {
+      const rules = Object.entries(schedule)
+        .filter(([, day]) => day.enabled && day.start_time && day.end_time)
+        .map(([dayIndex, day]) => ({
+          user_phone: phone,
+          rule_type: 'available' as const,
+          day_of_week: parseInt(dayIndex, 10),
+          start_time: day.start_time,
+          end_time: day.end_time,
+          is_recurring: true,
+          date: null,
+        }));
+      if (rules.length > 0) demoStore.createTimeRules(rules);
+    }
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://availabily.com';
+    await sendSMS(phone, `Your Availabily page is live. ${baseUrl}/${handle}`);
+    return NextResponse.json({ success: true, handle });
+  }
+
+  // ── Production: use Supabase ──
   const supabase = createServerClient();
 
   // Check handle uniqueness
