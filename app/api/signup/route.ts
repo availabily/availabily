@@ -68,8 +68,8 @@ export async function POST(request: NextRequest) {
         }));
       if (rules.length > 0) demoStore.createTimeRules(rules);
     }
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://availabily.com';
-    await sendSMS(phone, `Your Availabily page is live. ${baseUrl}/${handle}`);
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
+    await sendSMS(phone, `Your AM or PM? page is live. ${baseUrl}/${handle}`);
     return NextResponse.json({ success: true, handle });
   }
 
@@ -133,9 +133,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Send welcome SMS
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://availabily.com';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
   try {
-    await sendSMS(phone, `Your Availabily page is live. ${baseUrl}/${handle}`);
+    await sendSMS(phone, `Your AM or PM? page is live. ${baseUrl}/${handle}`);
   } catch (err) {
     console.error('Failed to send welcome SMS:', err);
     // Don't fail the signup if SMS fails

@@ -3,16 +3,18 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Create your page — Availabily',
+  title: 'Create your page — AM or PM?',
 };
 
 export default function SignupPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-violet-50/20">
       <nav className="px-6 py-5 max-w-xl mx-auto">
-        <Link href="/" className="text-xl font-bold text-indigo-600 tracking-tight">
-          Availabily
-        </Link>
+        <Link href="/" className="text-xl font-bold tracking-tight">
+            <span className="text-indigo-600">AM</span>
+            <span className="text-slate-900"> or </span>
+            <span className="text-indigo-600">PM?</span>
+          </Link>
       </nav>
 
       <div className="px-6 py-8 max-w-xl mx-auto">

@@ -9,6 +9,9 @@ import { toE164, isValidE164 } from '@/lib/utils';
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const rawBase = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
+const DISPLAY_DOMAIN = rawBase.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
 interface DaySchedule {
   enabled: boolean;
   start_time: string;
@@ -160,7 +163,7 @@ export function SignupForm() {
         />
         {handle && !errors.handle && (
           <p className="text-xs text-slate-500">
-            Your link: <span className="font-medium text-indigo-600">availabily.com/{handle}</span>
+            Your link: <span className="font-medium text-indigo-600">{DISPLAY_DOMAIN}/{handle}</span>
           </p>
         )}
       </div>

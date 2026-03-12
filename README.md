@@ -1,4 +1,4 @@
-# Availabily
+# AM or PM?
 
 A minimal, beautiful scheduling app. Share your availability link → visitors pick a time → you confirm by text.
 
@@ -29,7 +29,7 @@ In demo mode, SMS messages are **printed to your terminal** instead of sent. All
 ## How It Works
 
 1. **Create your page** at `/signup` — add your phone, handle, and weekly availability
-2. **Share your link** — `availabily.com/yourhandle`
+2. **Share your link** — `amorpm.com/yourhandle`
 3. **Visitors pick a time** — they choose a slot and enter their info
 4. **You get an SMS** with a confirm link
 5. **Tap confirm** — you're redirected into your SMS app with a prewritten message to the visitor
@@ -68,7 +68,7 @@ SUPABASE_SERVICE_ROLE_KEY=        # From Supabase project settings (secret)
 TWILIO_ACCOUNT_SID=               # From Twilio console
 TWILIO_AUTH_TOKEN=                # From Twilio console
 TWILIO_PHONE_NUMBER=              # Your Twilio phone number (E.164 format)
-NEXT_PUBLIC_BASE_URL=https://availabily.com
+NEXT_PUBLIC_BASE_URL=https://amorpm.com
 ```
 
 ### 3. Set up the database
@@ -133,7 +133,7 @@ availabily/
 
 
 1. **Create your page** at `/signup` — add your phone, handle, and weekly availability
-2. **Share your link** — `availabily.com/yourhandle`
+2. **Share your link** — `amorpm.com/yourhandle`
 3. **Visitors pick a time** — they choose a slot and enter their info
 4. **You get an SMS** with a confirm link
 5. **Tap confirm** — you're redirected into your SMS app with a prewritten message to the visitor
@@ -171,7 +171,7 @@ SUPABASE_SERVICE_ROLE_KEY=        # From Supabase project settings (secret)
 TWILIO_ACCOUNT_SID=               # From Twilio console
 TWILIO_AUTH_TOKEN=                # From Twilio console
 TWILIO_PHONE_NUMBER=              # Your Twilio phone number (E.164 format)
-NEXT_PUBLIC_BASE_URL=https://availabily.com
+NEXT_PUBLIC_BASE_URL=https://amorpm.com
 ```
 
 ### 3. Set up the database

@@ -8,8 +8,8 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { handle } = await params;
   return {
-    title: `@${handle} — Availabily`,
-    description: `Book time with @${handle} on Availabily.`,
+    title: `@${handle} — AM or PM?`,
+    description: `Book time with @${handle} on AM or PM?`,
   };
 }
 

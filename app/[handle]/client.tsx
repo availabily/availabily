@@ -60,8 +60,10 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
       <div className="max-w-lg mx-auto px-5 py-10">
         {/* Header */}
         <div className="mb-8">
-          <Link href="/" className="text-sm font-medium text-indigo-400 hover:text-indigo-600 transition-colors mb-4 inline-block">
-            Availabily
+          <Link href="/" className="text-sm font-bold tracking-tight hover:opacity-80 transition-opacity mb-4 inline-block">
+            <span className="text-indigo-400">AM</span>
+            <span className="text-slate-500"> or </span>
+            <span className="text-indigo-400">PM?</span>
           </Link>
           <h1 className="text-3xl font-bold text-slate-900">
             <span className="text-indigo-500">@</span>{handle}

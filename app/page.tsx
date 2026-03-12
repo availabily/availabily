@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Availabily — Share your availability, get booked by text',
+  title: 'AM or PM? — Share your availability, get booked by text',
 };
 
 export default function LandingPage() {
@@ -10,7 +10,11 @@ export default function LandingPage() {
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-violet-50/20">
       {/* Nav */}
       <nav className="px-6 py-5 flex items-center justify-between max-w-5xl mx-auto">
-        <span className="text-xl font-bold text-indigo-600 tracking-tight">Availabily</span>
+        <span className="text-xl font-bold tracking-tight">
+            <span className="text-indigo-600">AM</span>
+            <span className="text-slate-900"> or </span>
+            <span className="text-indigo-600">PM?</span>
+          </span>
         <Link
           href="/signup"
           className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors"
@@ -52,7 +56,7 @@ export default function LandingPage() {
             {
               step: '1',
               title: 'Share your link',
-              description: 'You get a simple link like availabily.com/jake. Share it anywhere.',
+              description: 'You get a simple link like amorpm.com/jake. Share it anywhere.',
               icon: '🔗',
             },
             {
@@ -100,7 +104,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="px-6 py-8 border-t border-slate-100 text-center">
         <p className="text-sm text-slate-400">
-          © 2026 Availabily. Simple scheduling, done right.
+          © 2026 AM or PM? Simple scheduling, done right.
         </p>
       </footer>
     </main>
