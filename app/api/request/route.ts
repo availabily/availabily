@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
-import { sendSMS } from '@/lib/infobip';
+import { sendEmail } from '@/lib/email';
 import { isSlotAvailable } from '@/lib/scheduling';
-import { isValidE164, toE164, formatPhone, formatTime, formatShortDay } from '@/lib/utils';
+import { isValidE164, toE164, formatPhone, formatTime, formatShortDay, formatFullDay } from '@/lib/utils';
 import { nanoid } from 'nanoid';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
@@ -52,6 +52,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Address is too long (max 200 characters)' }, { status: 400 });
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
+
   // ── Demo mode: use in-memory store ──
   if (isDemo) {
     const user = demoStore.getUserByHandle(handle);
@@ -87,15 +89,26 @@ export async function POST(request: NextRequest) {
       created_at: now,
     });
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
-    const smsBody = [
-      'New time request',
-      `${formatShortDay(date)} ${formatTime(start_time)}`,
-      `${visitor_name} – ${formatPhone(visitor_phone)}`,
-      `Address: ${visitor_address}`,
-      `Confirm: ${baseUrl}/c/${confirm_token}`,
-    ].filter(Boolean).join('\n');
-    await sendSMS(user.phone, smsBody);
+    const confirmUrl = `${baseUrl}/c/${confirm_token}`;
+    const notifTitle = `New request: ${formatShortDay(date)} at ${formatTime(start_time)}`;
+    const notifBody = `${visitor_name} – ${formatPhone(visitor_phone)}\n${visitor_address}`;
+
+    demoStore.createNotification({
+      user_phone: user.phone,
+      title: notifTitle,
+      body: notifBody,
+      link: confirmUrl,
+      is_read: false,
+    });
+
+    if (user.email) {
+      await sendEmail(
+        user.email,
+        `New time request — ${formatFullDay(date)} at ${formatTime(start_time)}`,
+        buildNotificationEmail(visitor_name, visitor_phone, visitor_address, date, start_time, confirmUrl, baseUrl),
+      );
+    }
+
     return NextResponse.json({ success: true });
   }
 
@@ -180,22 +193,63 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create meeting request' }, { status: 500 });
   }
 
-  // Send SMS to owner
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
-  const smsBody = [
-    'New time request',
-    `${formatShortDay(date)} ${formatTime(start_time)}`,
-    `${visitor_name} – ${formatPhone(visitor_phone)}`,
-    `Address: ${visitor_address}`,
-    `Confirm: ${baseUrl}/c/${confirm_token}`,
-  ].filter(Boolean).join('\n');
+  const confirmUrl = `${baseUrl}/c/${confirm_token}`;
+  const notifTitle = `New request: ${formatShortDay(date)} at ${formatTime(start_time)}`;
+  const notifBody = `${visitor_name} – ${formatPhone(visitor_phone)}\n${visitor_address}`;
 
-  try {
-    await sendSMS(user.phone, smsBody);
-  } catch (err) {
-    console.error('Failed to send request SMS:', err);
-    // Still return success - meeting is created
+  // Create in-app notification
+  const { error: notifError } = await supabase
+    .from('notifications')
+    .insert({
+      user_phone: user.phone,
+      title: notifTitle,
+      body: notifBody,
+      link: confirmUrl,
+      is_read: false,
+    });
+
+  if (notifError) {
+    console.error('Failed to create notification:', notifError);
+  }
+
+  // Send email notification to owner
+  if (user.email) {
+    try {
+      await sendEmail(
+        user.email,
+        `New time request — ${formatFullDay(date)} at ${formatTime(start_time)}`,
+        buildNotificationEmail(visitor_name, visitor_phone, visitor_address, date, start_time, confirmUrl, baseUrl),
+      );
+    } catch (err) {
+      console.error('Failed to send notification email:', err);
+      // Still return success - meeting is created
+    }
   }
 
   return NextResponse.json({ success: true });
+}
+
+function buildNotificationEmail(
+  visitorName: string,
+  visitorPhone: string,
+  visitorAddress: string,
+  date: string,
+  startTime: string,
+  confirmUrl: string,
+  baseUrl: string,
+): string {
+  const dayName = formatFullDay(date);
+  const time = formatTime(startTime);
+  return `
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:20px;color:#1e293b;">
+      <h2 style="color:#4f46e5;margin-bottom:8px;">📅 New time request</h2>
+      <div style="background:#eef2ff;border-radius:8px;padding:16px;margin:16px 0;">
+        <p style="margin:0;font-size:20px;font-weight:bold;color:#312e81;">${dayName} at ${time}</p>
+      </div>
+      <p style="margin:8px 0;"><strong>${visitorName}</strong> – ${formatPhone(visitorPhone)}</p>
+      <p style="margin:8px 0;">📍 ${visitorAddress}</p>
+      <a href="${confirmUrl}" style="display:inline-block;background:#16a34a;color:#fff;font-weight:700;padding:14px 28px;border-radius:8px;text-decoration:none;margin-top:16px;font-size:16px;">✓ Confirm this request →</a>
+      <p style="margin-top:20px;font-size:13px;color:#64748b;">Or <a href="${baseUrl}/dashboard" style="color:#4f46e5;">view your dashboard</a> to manage all requests.</p>
+    </div>
+  `;
 }
