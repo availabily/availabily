@@ -7,7 +7,7 @@ import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
 import { nanoid } from 'nanoid';
 
-const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 // ── OTP store ──────────────────────────────────────────────────────────────
 const OTP_EXPIRATION_MS = 10 * 60 * 1000; // 10 minutes

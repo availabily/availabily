@@ -7,7 +7,7 @@ import { isSlotAvailable } from '@/lib/scheduling';
 import { isValidE164, toE164, formatPhone, formatTime, formatShortDay, formatDateDisplay } from '@/lib/utils';
 import { nanoid } from 'nanoid';
 
-const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 interface RequestBody {
   handle: string;

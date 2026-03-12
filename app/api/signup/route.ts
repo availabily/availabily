@@ -5,7 +5,7 @@ import { sendSMS } from '@/lib/infobip';
 import { sendEmail } from '@/lib/email';
 import { isValidE164, toE164 } from '@/lib/utils';
 
-const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 interface DaySchedule {
   enabled: boolean;

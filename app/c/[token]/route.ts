@@ -4,7 +4,7 @@ import { demoStore } from '@/lib/demo-store';
 import { formatFullDay, formatTime } from '@/lib/utils';
 import { nanoid } from 'nanoid';
 
-const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 function confirmationPage(dayName: string, time: string, visitorPhone: string, visitorName: string): NextResponse {
   const smsUrl = `sms:${visitorPhone}?body=${encodeURIComponent(`Confirmed for ${dayName} at ${time}`)}`;

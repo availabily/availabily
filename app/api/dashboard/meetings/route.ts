@@ -4,7 +4,7 @@ import { demoStore } from '@/lib/demo-store';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 
-const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 export async function GET() {
   const cookieStore = await cookies();

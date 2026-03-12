@@ -3,7 +3,7 @@ import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
 import { computeAvailability } from '@/lib/scheduling';
 
-const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 export async function GET(
   _request: NextRequest,
