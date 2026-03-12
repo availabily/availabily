@@ -15,12 +15,20 @@ export default function LandingPage() {
             <span className="text-slate-900"> or </span>
             <span className="text-indigo-600">PM?</span>
           </span>
-        <Link
-          href="/signup"
-          className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors"
-        >
-          Create yours →
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/login"
+            className="text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
+          >
+            Log in
+          </Link>
+          <Link
+            href="/signup"
+            className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors"
+          >
+            Create yours →
+          </Link>
+        </div>
       </nav>
 
       {/* Hero */}
