@@ -160,7 +160,7 @@ export function SignupForm() {
         />
         {handle && !errors.handle && (
           <p className="text-xs text-slate-500">
-            Your link: <span className="font-medium text-indigo-600">availabily.com/{handle}</span>
+            Your link: <span className="font-medium text-indigo-600">amorpm.com/{handle}</span>
           </p>
         )}
       </div>

@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       created_at: now,
     });
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://availabily.com';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
     const smsBody = [
       'New time request',
       `${formatShortDay(date)} ${formatTime(start_time)}`,
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Send SMS to owner
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://availabily.com';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
   const smsBody = [
     'New time request',
     `${formatShortDay(date)} ${formatTime(start_time)}`,
