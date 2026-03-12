@@ -16,7 +16,7 @@ interface RequestFormProps {
 export function RequestForm({ handle, date, startTime, onSuccess, onBack }: RequestFormProps) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [note, setNote] = useState('');
+  const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -32,6 +32,7 @@ export function RequestForm({ handle, date, startTime, onSuccess, onBack }: Requ
         newErrors.phone = 'Please enter a valid US phone number';
       }
     }
+    if (!address.trim()) newErrors.address = 'Address is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -54,7 +55,7 @@ export function RequestForm({ handle, date, startTime, onSuccess, onBack }: Requ
           start_time: startTime,
           visitor_name: name.trim(),
           visitor_phone,
-          note: note.trim() || undefined,
+          visitor_address: address.trim(),
         }),
       });
 
@@ -103,19 +104,16 @@ export function RequestForm({ handle, date, startTime, onSuccess, onBack }: Requ
         autoComplete="tel"
       />
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="note" className="text-sm font-medium text-slate-700">
-          What is this about? <span className="text-slate-400 font-normal">(optional)</span>
-        </label>
-        <textarea
-          id="note"
-          placeholder="Solar panel consultation, quick catch-up, etc."
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          rows={3}
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-        />
-      </div>
+      <Input
+        id="address"
+        label="Your address"
+        placeholder="123 Main St, Lahaina, HI 96761"
+        value={address}
+        onChange={(e) => setAddress(e.target.value)}
+        error={errors.address}
+        autoComplete="street-address"
+        maxLength={200}
+      />
 
       {error && (
         <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">

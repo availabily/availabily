@@ -25,7 +25,7 @@ export interface Meeting {
   end_time: string;
   visitor_name: string;
   visitor_phone: string;
-  note: string | null;
+  note: string | null; // stores visitor_address for backward compatibility
   status: 'pending' | 'accepted' | 'declined' | 'expired';
   confirm_token: string;
   created_at: string;

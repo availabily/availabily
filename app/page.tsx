@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'AM or PM? — Share your availability, get booked by text',
+  title: 'AM or PM? — Schedule jobs. Get booked by text.',
 };
 
 export default function LandingPage() {
@@ -29,12 +29,12 @@ export default function LandingPage() {
           <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">Free &amp; simple</span>
         </div>
         <h1 className="text-5xl sm:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight mb-6">
-          Share your availability.
+          Schedule jobs.
           <br />
           <span className="text-indigo-600">Get booked by text.</span>
         </h1>
         <p className="text-xl text-slate-500 leading-relaxed mb-10 max-w-2xl mx-auto">
-          One link. Visitors pick a time, enter their info, and you get an SMS to confirm.
+          Create your business page, text the link to customers, and they pick a time and enter their details. You get an SMS to confirm.
           No apps, no dashboards, no friction.
         </p>
         <Link
@@ -51,25 +51,31 @@ export default function LandingPage() {
         <h2 className="text-center text-sm font-semibold uppercase tracking-wider text-slate-400 mb-12">
           How it works
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             {
               step: '1',
-              title: 'Share your link',
-              description: 'You get a simple link like amorpm.com/jake. Share it anywhere.',
-              icon: '🔗',
+              title: 'Create your page',
+              description: 'Set up your business schedule in 60 seconds. Get a link like amorpm.com/lahainawindows.',
+              icon: '🏢',
             },
             {
               step: '2',
-              title: 'They pick a time',
-              description: 'Visitors see your open slots, pick one, and leave their name and phone.',
-              icon: '📅',
+              title: 'Text it to customers',
+              description: 'Send your link to customers via text. No app required — just a simple URL.',
+              icon: '💬',
             },
             {
               step: '3',
-              title: 'You confirm by text',
-              description: "You get an SMS. Tap confirm. You're dropped into a text with them. Done.",
-              icon: '💬',
+              title: 'They pick a time',
+              description: 'Customers see your open slots, pick one, and enter their name, number, and address.',
+              icon: '📅',
+            },
+            {
+              step: '4',
+              title: 'You confirm by SMS',
+              description: "You get a text with their details. Tap confirm and you're connected. Done.",
+              icon: '✅',
             },
           ].map((item) => (
             <div
