@@ -3,7 +3,7 @@ CREATE TABLE users (
   phone text PRIMARY KEY,
   handle text UNIQUE NOT NULL,
   timezone text NOT NULL DEFAULT 'America/Los_Angeles',
-  email text,
+  email text UNIQUE,
   created_at timestamptz DEFAULT now()
 );
 
@@ -70,5 +70,5 @@ CREATE TABLE magic_codes (
 CREATE INDEX magic_codes_email_idx ON magic_codes(email);
 
 -- Migration: add email column to existing users table
--- ALTER TABLE users ADD COLUMN email text;
+-- ALTER TABLE users ADD COLUMN email text UNIQUE;
 -- CREATE INDEX users_email_idx ON users(email);

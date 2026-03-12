@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     .from('users')
     .select('email')
     .eq('email', email)
-    .single();
+    .maybeSingle();
 
   if (existingEmail) {
     return NextResponse.json({ error: 'Email is already registered' }, { status: 409 });

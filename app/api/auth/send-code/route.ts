@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     .from('users')
     .select('email')
     .eq('email', email)
-    .single();
+    .maybeSingle();
 
   if (!user) {
     return NextResponse.json({ error: 'No account found with that email address' }, { status: 404 });

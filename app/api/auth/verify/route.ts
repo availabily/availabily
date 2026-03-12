@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     .from('users')
     .select('phone')
     .eq('email', email)
-    .single();
+    .maybeSingle();
 
   if (!user) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
