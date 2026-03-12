@@ -1,9 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
-import { formatFullDay, formatTime } from '@/lib/utils';
+import { formatFullDay, formatTime, formatDateDisplay } from '@/lib/utils';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+
+function confirmationPage(
+  visitorName: string,
+  visitorPhone: string,
+  meetingDate: string,
+  startTime: string
+): string {
+  const dayName = formatFullDay(meetingDate);
+  const time = formatTime(startTime);
+  const displayDate = formatDateDisplay(meetingDate);
+  const smsBody = `Confirmed for ${dayName} at ${time}`;
+  const smsUrl = `sms:${visitorPhone}?body=${encodeURIComponent(smsBody)}`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meeting Confirmed — AM or PM?</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .card { background: #fff; border-radius: 24px; border: 1px solid #e2e8f0; box-shadow: 0 4px 24px rgba(0,0,0,0.06); padding: 48px 40px; max-width: 420px; width: 100%; text-align: center; }
+    .emoji { font-size: 56px; margin-bottom: 20px; }
+    h1 { font-size: 28px; font-weight: 800; color: #1e293b; margin-bottom: 8px; }
+    .subtitle { color: #64748b; font-size: 15px; margin-bottom: 28px; }
+    .details { background: #f1f5f9; border-radius: 16px; padding: 20px; margin-bottom: 28px; text-align: left; }
+    .details p { color: #475569; font-size: 14px; margin-bottom: 6px; }
+    .details p:last-child { margin-bottom: 0; }
+    .details strong { color: #1e293b; }
+    .btn { display: inline-block; background: #4f46e5; color: #fff; font-weight: 600; font-size: 15px; padding: 14px 28px; border-radius: 14px; text-decoration: none; margin-bottom: 12px; width: 100%; }
+    .btn-secondary { display: inline-block; color: #64748b; font-size: 13px; text-decoration: none; }
+    .btn-secondary:hover { color: #4f46e5; }
+    .logo { font-size: 18px; font-weight: 800; margin-bottom: 32px; display: block; }
+    .logo span { color: #4f46e5; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <a href="/" class="logo"><span>AM</span> or <span>PM?</span></a>
+    <div class="emoji">✅</div>
+    <h1>Meeting Confirmed!</h1>
+    <p class="subtitle">You've confirmed the booking with ${visitorName}.</p>
+    <div class="details">
+      <p><strong>${visitorName}</strong></p>
+      <p>${displayDate}</p>
+      <p>at ${time}</p>
+    </div>
+    <a href="/dashboard" class="btn">Go to Dashboard →</a>
+    <br />
+    <a href="${smsUrl}" class="btn-secondary">Send confirmation text to visitor</a>
+  </div>
+</body>
+</html>`;
+}
 
 export async function GET(
   _request: NextRequest,
@@ -41,10 +96,10 @@ export async function GET(
       );
     }
     demoStore.updateMeeting(meeting.id, { status: 'accepted' });
-    const dayName = formatFullDay(meeting.meeting_date);
-    const time = formatTime(meeting.start_time);
-    const smsBody = `Confirmed for ${dayName} at ${time}`;
-    return NextResponse.redirect(`sms:${meeting.visitor_phone}?body=${encodeURIComponent(smsBody)}`, 302);
+    return new NextResponse(
+      confirmationPage(meeting.visitor_name, meeting.visitor_phone, meeting.meeting_date, meeting.start_time),
+      { status: 200, headers: { 'Content-Type': 'text/html' } }
+    );
   }
 
   // ── Production: use Supabase ──
@@ -107,11 +162,8 @@ export async function GET(
     );
   }
 
-  // Redirect to SMS app with prewritten message
-  const dayName = formatFullDay(meeting.meeting_date);
-  const time = formatTime(meeting.start_time);
-  const smsBody = `Confirmed for ${dayName} at ${time}`;
-  const smsUrl = `sms:${meeting.visitor_phone}?body=${encodeURIComponent(smsBody)}`;
-
-  return NextResponse.redirect(smsUrl, 302);
+  return new NextResponse(
+    confirmationPage(meeting.visitor_name, meeting.visitor_phone, meeting.meeting_date, meeting.start_time),
+    { status: 200, headers: { 'Content-Type': 'text/html' } }
+  );
 }

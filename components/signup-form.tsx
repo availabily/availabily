@@ -44,6 +44,7 @@ const TIMEZONES = [
 export function SignupForm() {
   const router = useRouter();
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [handle, setHandle] = useState('');
   const [timezone, setTimezone] = useState(() => {
     try {
@@ -88,6 +89,12 @@ export function SignupForm() {
       }
     }
 
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
     if (!handle.trim()) {
       newErrors.handle = 'Handle is required';
     } else if (!/^[a-z0-9-]+$/.test(handle) || handle.length < 2 || handle.length > 30) {
@@ -117,6 +124,7 @@ export function SignupForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone: normalizedPhone,
+          email: email.trim(),
           handle,
           timezone,
           schedule,
@@ -130,7 +138,7 @@ export function SignupForm() {
         return;
       }
 
-      router.push(`/signup/success?handle=${handle}`);
+      router.push(`/login`);
     } catch {
       setError('Network error. Please try again.');
     } finally {
@@ -149,6 +157,17 @@ export function SignupForm() {
         onChange={(e) => setPhone(e.target.value)}
         error={errors.phone}
         autoComplete="tel"
+      />
+
+      <Input
+        id="email"
+        label="Email"
+        placeholder="you@example.com"
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        error={errors.email}
+        autoComplete="email"
       />
 
       <div className="flex flex-col gap-1.5">

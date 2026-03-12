@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
 import { sendSMS } from '@/lib/infobip';
+import { sendEmail } from '@/lib/email';
 import { isSlotAvailable } from '@/lib/scheduling';
-import { isValidE164, toE164, formatPhone, formatTime, formatShortDay } from '@/lib/utils';
+import { isValidE164, toE164, formatPhone, formatTime, formatShortDay, formatDateDisplay } from '@/lib/utils';
 import { nanoid } from 'nanoid';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
@@ -95,6 +96,38 @@ export async function POST(request: NextRequest) {
       `Address: ${visitor_address}`,
       `Confirm: ${baseUrl}/c/${confirm_token}`,
     ].filter(Boolean).join('\n');
+
+    // Create in-app notification
+    demoStore.createNotification({
+      user_phone: user.phone,
+      title: 'New booking request',
+      body: `${visitor_name} wants to meet on ${formatShortDay(date)} at ${formatTime(start_time)}`,
+      link: `/c/${confirm_token}`,
+    });
+
+    // Send email notification to owner if they have an email
+    if (user.email) {
+      const confirmUrl = `${baseUrl}/c/${confirm_token}`;
+      const emailHtml = `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;">
+          <h1 style="font-size:20px;font-weight:700;color:#1e293b;">New booking request 📅</h1>
+          <p style="color:#64748b;margin:12px 0;">Someone wants to book a time with you.</p>
+          <div style="background:#f1f5f9;border-radius:12px;padding:20px;margin:20px 0;">
+            <p style="margin:0 0 8px;"><strong>${visitor_name}</strong></p>
+            <p style="margin:0 0 4px;color:#64748b;">${formatPhone(visitor_phone)}</p>
+            <p style="margin:0 0 4px;color:#64748b;">📍 ${visitor_address}</p>
+            <p style="margin:12px 0 0;font-weight:600;color:#1e293b;">${formatDateDisplay(date)} at ${formatTime(start_time)}</p>
+          </div>
+          <a href="${confirmUrl}" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none;">Confirm this meeting →</a>
+        </div>
+      `;
+      try {
+        await sendEmail(user.email, `New booking: ${visitor_name} – ${formatShortDay(date)}`, emailHtml);
+      } catch (err) {
+        console.error('Failed to send owner email (non-fatal):', err);
+      }
+    }
+
     await sendSMS(user.phone, smsBody);
     return NextResponse.json({ success: true });
   }
@@ -189,6 +222,41 @@ export async function POST(request: NextRequest) {
     `Address: ${visitor_address}`,
     `Confirm: ${baseUrl}/c/${confirm_token}`,
   ].filter(Boolean).join('\n');
+
+  // Create in-app notification
+  try {
+    await supabase.from('notifications').insert({
+      user_phone: user.phone,
+      title: 'New booking request',
+      body: `${visitor_name} wants to meet on ${formatShortDay(date)} at ${formatTime(start_time)}`,
+      link: `/c/${confirm_token}`,
+    });
+  } catch (err) {
+    console.error('Failed to create notification (non-fatal):', err);
+  }
+
+  // Send email to owner if they have one
+  if (user.email) {
+    const confirmUrl = `${baseUrl}/c/${confirm_token}`;
+    const emailHtml = `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;">
+        <h1 style="font-size:20px;font-weight:700;color:#1e293b;">New booking request 📅</h1>
+        <p style="color:#64748b;margin:12px 0;">Someone wants to book a time with you.</p>
+        <div style="background:#f1f5f9;border-radius:12px;padding:20px;margin:20px 0;">
+          <p style="margin:0 0 8px;"><strong>${visitor_name}</strong></p>
+          <p style="margin:0 0 4px;color:#64748b;">${formatPhone(visitor_phone)}</p>
+          <p style="margin:0 0 4px;color:#64748b;">📍 ${visitor_address}</p>
+          <p style="margin:12px 0 0;font-weight:600;color:#1e293b;">${formatDateDisplay(date)} at ${formatTime(start_time)}</p>
+        </div>
+        <a href="${confirmUrl}" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none;">Confirm this meeting →</a>
+      </div>
+    `;
+    try {
+      await sendEmail(user.email, `New booking: ${visitor_name} – ${formatShortDay(date)}`, emailHtml);
+    } catch (err) {
+      console.error('Failed to send owner email (non-fatal):', err);
+    }
+  }
 
   try {
     await sendSMS(user.phone, smsBody);
