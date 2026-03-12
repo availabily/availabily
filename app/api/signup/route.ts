@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
-import { sendSMS } from '@/lib/twilio';
+import { sendSMS } from '@/lib/infobip';
 import { isValidE164, toE164 } from '@/lib/utils';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
