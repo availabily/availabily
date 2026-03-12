@@ -16,7 +16,7 @@ export async function sendSMS(to: string, body: string): Promise<void> {
     throw new Error('Invalid INFOBIP_API_BASE_URL format');
   }
 
-  const response = await fetch(`https://${baseUrl}/sms/2/text/advanced`, {
+  const response = await fetch(`https://${baseUrl}/sms/3/messages`, {
     method: 'POST',
     headers: {
       Authorization: `App ${apiKey}`,
@@ -24,7 +24,7 @@ export async function sendSMS(to: string, body: string): Promise<void> {
       Accept: 'application/json',
     },
     body: JSON.stringify({
-      messages: [{ destinations: [{ to }], text: body }],
+      messages: [{ destinations: [{ to }], sender: 'ServiceSMS', content: { text: body } }],
     }),
   });
 
