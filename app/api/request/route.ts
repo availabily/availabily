@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
-import { sendSMS } from '@/lib/twilio';
+import { sendSMS } from '@/lib/infobip';
 import { isSlotAvailable } from '@/lib/scheduling';
 import { isValidE164, toE164, formatPhone, formatTime, formatShortDay } from '@/lib/utils';
 import { nanoid } from 'nanoid';
