@@ -12,6 +12,8 @@ interface SessionEntry {
   handle: string;
 }
 
+const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+
 // In-memory stores (persist for the lifetime of the server process)
 const otpStore = new Map<string, OTPEntry>();
 const sessionStore = new Map<string, SessionEntry>();
@@ -23,7 +25,7 @@ export function generateOTP(): string {
 export function storeOTP(email: string, code: string): void {
   otpStore.set(email.toLowerCase(), {
     code,
-    expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+    expiresAt: Date.now() + OTP_EXPIRY_MS,
   });
 }
 

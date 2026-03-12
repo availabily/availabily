@@ -96,8 +96,7 @@ export function DashboardClient() {
       })
       .catch(() => { if (!cancelled) router.replace('/login'); });
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [router, fetchNotifications, fetchMeetings]);
 
   // Poll notifications every 30 seconds (only when authenticated)
   useEffect(() => {
