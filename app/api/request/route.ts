@@ -14,7 +14,7 @@ interface RequestBody {
   start_time: string;
   visitor_name: string;
   visitor_phone: string;
-  note?: string;
+  visitor_address: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -25,9 +25,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { handle, date, start_time, visitor_name, visitor_phone: rawVisitorPhone, note } = body;
+  const { handle, date, start_time, visitor_name, visitor_phone: rawVisitorPhone, visitor_address } = body;
 
-  if (!handle || !date || !start_time || !visitor_name || !rawVisitorPhone) {
+  if (!handle || !date || !start_time || !visitor_name || !rawVisitorPhone || !visitor_address) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
@@ -45,6 +45,11 @@ export async function POST(request: NextRequest) {
   const visitor_phone = rawVisitorPhone.startsWith('+') ? rawVisitorPhone : toE164(rawVisitorPhone);
   if (!isValidE164(visitor_phone)) {
     return NextResponse.json({ error: 'Invalid visitor phone number' }, { status: 400 });
+  }
+
+  // Validate address length
+  if (visitor_address.length > 200) {
+    return NextResponse.json({ error: 'Address is too long (max 200 characters)' }, { status: 400 });
   }
 
   // ── Demo mode: use in-memory store ──
@@ -76,7 +81,7 @@ export async function POST(request: NextRequest) {
       end_time,
       visitor_name,
       visitor_phone,
-      note: note || null,
+      note: visitor_address,
       status: 'pending',
       confirm_token,
       created_at: now,
@@ -87,7 +92,7 @@ export async function POST(request: NextRequest) {
       'New time request',
       `${formatShortDay(date)} ${formatTime(start_time)}`,
       `${visitor_name} – ${formatPhone(visitor_phone)}`,
-      note || null,
+      `Address: ${visitor_address}`,
       `Confirm: ${baseUrl}/c/${confirm_token}`,
     ].filter(Boolean).join('\n');
     await sendSMS(user.phone, smsBody);
@@ -166,7 +171,7 @@ export async function POST(request: NextRequest) {
       end_time,
       visitor_name,
       visitor_phone,
-      note: note || null,
+      note: visitor_address,
       status: 'pending',
       confirm_token,
     });
@@ -181,7 +186,7 @@ export async function POST(request: NextRequest) {
     'New time request',
     `${formatShortDay(date)} ${formatTime(start_time)}`,
     `${visitor_name} – ${formatPhone(visitor_phone)}`,
-    note ? note : null,
+    `Address: ${visitor_address}`,
     `Confirm: ${baseUrl}/c/${confirm_token}`,
   ].filter(Boolean).join('\n');
 

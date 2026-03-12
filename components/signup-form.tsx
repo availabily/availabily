@@ -130,7 +130,7 @@ export function SignupForm() {
         return;
       }
 
-      router.push(`/${handle}`);
+      router.push(`/signup/success?handle=${handle}`);
     } catch {
       setError('Network error. Please try again.');
     } finally {
