@@ -1,7 +1,19 @@
 export interface User {
   phone: string;
+  email: string;
   handle: string;
   timezone: string;
+  created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  user_phone: string;
+  type: 'new_booking' | 'booking_confirmed' | 'booking_expired';
+  title: string;
+  body: string;
+  link: string | null;
+  read: boolean;
   created_at: string;
 }
 

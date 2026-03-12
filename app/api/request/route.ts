@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
 import { sendSMS } from '@/lib/infobip';
+import { sendEmail } from '@/lib/email';
 import { isSlotAvailable } from '@/lib/scheduling';
-import { isValidE164, toE164, formatPhone, formatTime, formatShortDay } from '@/lib/utils';
+import { isValidE164, toE164, formatPhone, formatTime, formatShortDay, formatDateDisplay } from '@/lib/utils';
 import { nanoid } from 'nanoid';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
@@ -52,6 +53,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Address is too long (max 200 characters)' }, { status: 400 });
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
+
   // ── Demo mode: use in-memory store ──
   if (isDemo) {
     const user = demoStore.getUserByHandle(handle);
@@ -72,9 +75,10 @@ export async function POST(request: NextRequest) {
     const end_time = `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     const confirm_token = nanoid(12);
     const now = new Date().toISOString();
+    const meetingId = `meeting-${Math.random().toString(36).slice(2)}`;
 
     demoStore.createMeeting({
-      id: `meeting-${Math.random().toString(36).slice(2)}`,
+      id: meetingId,
       user_phone: user.phone,
       meeting_date: date,
       start_time,
@@ -87,15 +91,50 @@ export async function POST(request: NextRequest) {
       created_at: now,
     });
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
-    const smsBody = [
-      'New time request',
-      `${formatShortDay(date)} ${formatTime(start_time)}`,
-      `${visitor_name} – ${formatPhone(visitor_phone)}`,
-      `Address: ${visitor_address}`,
-      `Confirm: ${baseUrl}/c/${confirm_token}`,
-    ].filter(Boolean).join('\n');
-    await sendSMS(user.phone, smsBody);
+    const dayDisplay = formatShortDay(date);
+    const timeDisplay = formatTime(start_time);
+
+    // Create in-app notification
+    demoStore.createNotification({
+      id: `notif-${Math.random().toString(36).slice(2)}`,
+      user_phone: user.phone,
+      type: 'new_booking',
+      title: 'New booking request',
+      body: `${visitor_name} wants to meet on ${dayDisplay} at ${timeDisplay}`,
+      link: `/c/${confirm_token}`,
+      read: false,
+      created_at: now,
+    });
+
+    // Send email notification to owner
+    const confirmUrl = `${baseUrl}/c/${confirm_token}`;
+    await sendEmail({
+      to: user.email,
+      subject: `New booking request from ${visitor_name}`,
+      text: [
+        `New time request`,
+        `${formatDateDisplay(date)} at ${timeDisplay}`,
+        `From: ${visitor_name} – ${formatPhone(visitor_phone)}`,
+        `Address: ${visitor_address}`,
+        `Confirm: ${confirmUrl}`,
+      ].join('\n'),
+      html: `<p><strong>New booking request</strong></p><p>${visitor_name} wants to meet on <strong>${formatDateDisplay(date)} at ${timeDisplay}</strong></p><p>Phone: ${formatPhone(visitor_phone)}</p><p>Address: ${visitor_address}</p><p><a href="${confirmUrl}" style="background:#4f46e5;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Confirm Meeting</a></p>`,
+    });
+
+    // SMS fallback (silent)
+    try {
+      const smsBody = [
+        'New time request',
+        `${dayDisplay} ${timeDisplay}`,
+        `${visitor_name} – ${formatPhone(visitor_phone)}`,
+        `Address: ${visitor_address}`,
+        `Confirm: ${confirmUrl}`,
+      ].join('\n');
+      await sendSMS(user.phone, smsBody);
+    } catch (err) {
+      console.error('SMS fallback failed (non-fatal):', err);
+    }
+
     return NextResponse.json({ success: true });
   }
 
@@ -180,21 +219,52 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create meeting request' }, { status: 500 });
   }
 
-  // Send SMS to owner
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
-  const smsBody = [
-    'New time request',
-    `${formatShortDay(date)} ${formatTime(start_time)}`,
-    `${visitor_name} – ${formatPhone(visitor_phone)}`,
-    `Address: ${visitor_address}`,
-    `Confirm: ${baseUrl}/c/${confirm_token}`,
-  ].filter(Boolean).join('\n');
+  const dayDisplay = formatShortDay(date);
+  const timeDisplay = formatTime(start_time);
+  const confirmUrl = `${baseUrl}/c/${confirm_token}`;
 
+  // Insert in-app notification
+  await supabase.from('notifications').insert({
+    user_phone: user.phone,
+    type: 'new_booking',
+    title: 'New booking request',
+    body: `${visitor_name} wants to meet on ${dayDisplay} at ${timeDisplay}`,
+    link: `/c/${confirm_token}`,
+    read: false,
+  });
+
+  // Send email notification to owner
+  if (user.email) {
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: `New booking request from ${visitor_name}`,
+        text: [
+          'New time request',
+          `${formatDateDisplay(date)} at ${timeDisplay}`,
+          `From: ${visitor_name} – ${formatPhone(visitor_phone)}`,
+          `Address: ${visitor_address}`,
+          `Confirm: ${confirmUrl}`,
+        ].join('\n'),
+        html: `<p><strong>New booking request</strong></p><p>${visitor_name} wants to meet on <strong>${formatDateDisplay(date)} at ${timeDisplay}</strong></p><p>Phone: ${formatPhone(visitor_phone)}</p><p>Address: ${visitor_address}</p><p><a href="${confirmUrl}" style="background:#4f46e5;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Confirm Meeting</a></p>`,
+      });
+    } catch (err) {
+      console.error('Failed to send booking email notification:', err);
+    }
+  }
+
+  // SMS fallback (silent)
   try {
+    const smsBody = [
+      'New time request',
+      `${dayDisplay} ${timeDisplay}`,
+      `${visitor_name} – ${formatPhone(visitor_phone)}`,
+      `Address: ${visitor_address}`,
+      `Confirm: ${confirmUrl}`,
+    ].join('\n');
     await sendSMS(user.phone, smsBody);
   } catch (err) {
-    console.error('Failed to send request SMS:', err);
-    // Still return success - meeting is created
+    console.error('Failed to send request SMS (non-fatal):', err);
   }
 
   return NextResponse.json({ success: true });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
 import { sendSMS } from '@/lib/infobip';
+import { sendEmail } from '@/lib/email';
 import { isValidE164, toE164 } from '@/lib/utils';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
@@ -13,6 +14,7 @@ interface DaySchedule {
 }
 
 interface SignupBody {
+  email: string;
   phone: string;
   handle: string;
   timezone: string;
@@ -27,11 +29,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { phone: rawPhone, handle, timezone, schedule } = body;
+  const { email: rawEmail, phone: rawPhone, handle, timezone, schedule } = body;
 
   // Validate required fields
-  if (!rawPhone || !handle || !timezone) {
+  if (!rawEmail || !rawPhone || !handle || !timezone) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  // Validate email format
+  const email = rawEmail.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
   }
 
   // Validate and normalize phone
@@ -45,6 +53,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Handle must be 2-30 lowercase alphanumeric characters or hyphens' }, { status: 400 });
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
+
   // ── Demo mode: use in-memory store ──
   if (isDemo) {
     if (demoStore.getUserByHandle(handle)) {
@@ -53,7 +63,10 @@ export async function POST(request: NextRequest) {
     if (demoStore.getUserByPhone(phone)) {
       return NextResponse.json({ error: 'Phone number is already registered' }, { status: 409 });
     }
-    demoStore.createUser({ phone, handle, timezone, created_at: new Date().toISOString() });
+    if (demoStore.getUserByEmail(email)) {
+      return NextResponse.json({ error: 'Email is already registered' }, { status: 409 });
+    }
+    demoStore.createUser({ phone, email, handle, timezone, created_at: new Date().toISOString() });
     if (schedule) {
       const rules = Object.entries(schedule)
         .filter(([, day]) => day.enabled && day.start_time && day.end_time)
@@ -68,8 +81,12 @@ export async function POST(request: NextRequest) {
         }));
       if (rules.length > 0) demoStore.createTimeRules(rules);
     }
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
-    await sendSMS(phone, `Your AM or PM? page is live. ${baseUrl}/${handle}`);
+    await sendEmail({
+      to: email,
+      subject: 'Your AM or PM? page is live!',
+      text: `Your scheduling page is live at ${baseUrl}/${handle}\n\nShare this link with your customers to start getting bookings.\n\nLog in to your dashboard at ${baseUrl}/login`,
+      html: `<p>Your scheduling page is live at <a href="${baseUrl}/${handle}">${baseUrl}/${handle}</a></p><p>Share this link with your customers to start getting bookings.</p><p><a href="${baseUrl}/login">Log in to your dashboard</a></p>`,
+    });
     return NextResponse.json({ success: true, handle });
   }
 
@@ -98,10 +115,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Phone number is already registered' }, { status: 409 });
   }
 
+  // Check email uniqueness
+  const { data: existingEmail } = await supabase
+    .from('users')
+    .select('email')
+    .eq('email', email)
+    .single();
+
+  if (existingEmail) {
+    return NextResponse.json({ error: 'Email is already registered' }, { status: 409 });
+  }
+
   // Create user
   const { error: userError } = await supabase
     .from('users')
-    .insert({ phone, handle, timezone });
+    .insert({ phone, email, handle, timezone });
 
   if (userError) {
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
@@ -132,14 +160,25 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Send welcome SMS
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
+  // Send welcome email
+  try {
+    await sendEmail({
+      to: email,
+      subject: 'Your AM or PM? page is live!',
+      text: `Your scheduling page is live at ${baseUrl}/${handle}\n\nShare this link with your customers to start getting bookings.\n\nLog in to your dashboard at ${baseUrl}/login`,
+      html: `<p>Your scheduling page is live at <a href="${baseUrl}/${handle}">${baseUrl}/${handle}</a></p><p>Share this link with your customers to start getting bookings.</p><p><a href="${baseUrl}/login">Log in to your dashboard</a></p>`,
+    });
+  } catch (err) {
+    console.error('Failed to send welcome email:', err);
+  }
+
+  // Try SMS as fallback (silent)
   try {
     await sendSMS(phone, `Your AM or PM? page is live. ${baseUrl}/${handle}`);
   } catch (err) {
-    console.error('Failed to send welcome SMS:', err);
-    // Don't fail the signup if SMS fails
+    console.error('Failed to send welcome SMS (non-fatal):', err);
   }
 
   return NextResponse.json({ success: true, handle });
 }
+
