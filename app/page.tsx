@@ -21,6 +21,12 @@ export default function LandingPage() {
         >
           Create yours →
         </Link>
+        <Link
+          href="/login"
+          className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+        >
+          Log in
+        </Link>
       </nav>
 
       {/* Hero */}
@@ -34,8 +40,8 @@ export default function LandingPage() {
           <span className="text-indigo-600">Get booked by text.</span>
         </h1>
         <p className="text-xl text-slate-500 leading-relaxed mb-10 max-w-2xl mx-auto">
-          Create your business page, text the link to customers, and they pick a time and enter their details. You get an SMS to confirm.
-          No apps, no dashboards, no friction.
+          Create your business page, text the link to customers, and they pick a time and enter their details. You get notified instantly.
+          No apps, no friction.
         </p>
         <Link
           href="/signup"
