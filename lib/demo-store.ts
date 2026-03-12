@@ -4,9 +4,10 @@
  * Data persists for the lifetime of the dev server process.
  */
 
-import { User, TimeRule, Meeting } from './types';
+import { User, TimeRule, Meeting, Notification } from './types';
 
 const DEMO_PHONE = '+10000000000';
+const DEMO_EMAIL = 'demo@amorpm.com';
 export const DEMO_HANDLE = 'demo';
 
 const users: User[] = [
@@ -14,6 +15,7 @@ const users: User[] = [
     phone: DEMO_PHONE,
     handle: DEMO_HANDLE,
     timezone: 'America/Los_Angeles',
+    email: DEMO_EMAIL,
     created_at: new Date().toISOString(),
   },
 ];
@@ -32,6 +34,10 @@ const timeRules: TimeRule[] = [1, 2, 3, 4, 5].map((dow, i) => ({
 }));
 
 const meetings: Meeting[] = [];
+const notifications: Notification[] = [];
+
+// magic_codes: email -> { code, expiresAt, used }
+const magicCodes: Map<string, { code: string; expiresAt: number; used: boolean }[]> = new Map();
 
 export const demoStore = {
   getUserByHandle(handle: string): User | null {
@@ -40,6 +46,10 @@ export const demoStore = {
 
   getUserByPhone(phone: string): User | null {
     return users.find(u => u.phone === phone) ?? null;
+  },
+
+  getUserByEmail(email: string): User | null {
+    return users.find(u => u.email === email) ?? null;
   },
 
   createUser(user: User): void {
@@ -96,5 +106,52 @@ export const demoStore = {
         m.status === 'pending' &&
         m.created_at >= since
     ).length;
+  },
+
+  // Notifications
+  getNotifications(userPhone: string): Notification[] {
+    return notifications
+      .filter(n => n.user_phone === userPhone)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  },
+
+  createNotification(notification: Omit<Notification, 'id' | 'created_at'>): void {
+    notifications.push({
+      ...notification,
+      id: `notif-${Math.random().toString(36).slice(2)}`,
+      created_at: new Date().toISOString(),
+    });
+  },
+
+  markNotificationsRead(userPhone: string, ids: string[]): void {
+    for (const notif of notifications) {
+      if (notif.user_phone === userPhone && ids.includes(notif.id)) {
+        notif.is_read = true;
+      }
+    }
+  },
+
+  markAllNotificationsRead(userPhone: string): void {
+    for (const notif of notifications) {
+      if (notif.user_phone === userPhone) {
+        notif.is_read = true;
+      }
+    }
+  },
+
+  // Magic codes
+  storeMagicCode(email: string, code: string, expiresAt: number): void {
+    const existing = magicCodes.get(email) ?? [];
+    existing.push({ code, expiresAt, used: false });
+    magicCodes.set(email, existing);
+  },
+
+  verifyMagicCode(email: string, code: string): boolean {
+    const codes = magicCodes.get(email) ?? [];
+    const now = Date.now();
+    const entry = codes.find(c => c.code === code && !c.used && c.expiresAt > now);
+    if (!entry) return false;
+    entry.used = true;
+    return true;
   },
 };

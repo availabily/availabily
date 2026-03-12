@@ -2,6 +2,7 @@ export interface User {
   phone: string;
   handle: string;
   timezone: string;
+  email?: string;
   created_at: string;
 }
 
@@ -46,4 +47,14 @@ export interface AvailabilityResponse {
   handle: string;
   timezone: string;
   days: DayAvailability[];
+}
+
+export interface Notification {
+  id: string;
+  user_phone: string;
+  title: string;
+  body: string;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
 }

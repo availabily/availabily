@@ -5,6 +5,35 @@ import { formatFullDay, formatTime } from '@/lib/utils';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
+function confirmedPage(visitorName: string, dayName: string, time: string): NextResponse {
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Meeting Confirmed</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f8fafc; }
+    .card { background: #fff; border-radius: 16px; padding: 40px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    h1 { color: #16a34a; font-size: 1.75rem; margin-bottom: 8px; }
+    p { color: #475569; margin: 8px 0; }
+    .time { font-size: 1.25rem; font-weight: 700; color: #1e293b; margin: 16px 0; }
+    a { display: inline-block; margin-top: 24px; background: #4f46e5; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div style="font-size:3rem;">✅</div>
+    <h1>Confirmed!</h1>
+    <p>You confirmed the meeting with <strong>${visitorName}</strong>.</p>
+    <p class="time">${dayName} at ${time}</p>
+    <p>Contact them to let them know you're confirmed.</p>
+    <a href="/dashboard">View dashboard →</a>
+  </div>
+</body>
+</html>`;
+  return new NextResponse(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
@@ -43,8 +72,7 @@ export async function GET(
     demoStore.updateMeeting(meeting.id, { status: 'accepted' });
     const dayName = formatFullDay(meeting.meeting_date);
     const time = formatTime(meeting.start_time);
-    const smsBody = `Confirmed for ${dayName} at ${time}`;
-    return NextResponse.redirect(`sms:${meeting.visitor_phone}?body=${encodeURIComponent(smsBody)}`, 302);
+    return confirmedPage(meeting.visitor_name, dayName, time);
   }
 
   // ── Production: use Supabase ──
@@ -107,11 +135,7 @@ export async function GET(
     );
   }
 
-  // Redirect to SMS app with prewritten message
   const dayName = formatFullDay(meeting.meeting_date);
   const time = formatTime(meeting.start_time);
-  const smsBody = `Confirmed for ${dayName} at ${time}`;
-  const smsUrl = `sms:${meeting.visitor_phone}?body=${encodeURIComponent(smsBody)}`;
-
-  return NextResponse.redirect(smsUrl, 302);
+  return confirmedPage(meeting.visitor_name, dayName, time);
 }

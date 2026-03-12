@@ -21,6 +21,12 @@ export default function LandingPage() {
         >
           Create yours →
         </Link>
+        <Link
+          href="/login"
+          className="text-sm font-semibold text-slate-400 hover:text-indigo-600 transition-colors"
+        >
+          Owner login
+        </Link>
       </nav>
 
       {/* Hero */}
