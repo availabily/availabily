@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Notification, Meeting } from '@/lib/types';
 
+const POLLING_INTERVAL_MS = 30_000; // 30 seconds
+
 const rawBase = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
 const DISPLAY_DOMAIN = rawBase.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
@@ -102,7 +104,7 @@ export default function DashboardPage() {
     const interval = setInterval(() => {
       fetchNotifications();
       fetchMeetings();
-    }, 30000);
+    }, POLLING_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [loading, fetchNotifications, fetchMeetings]);
 

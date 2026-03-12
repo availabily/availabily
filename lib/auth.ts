@@ -10,6 +10,7 @@ import { nanoid } from 'nanoid';
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 // ── OTP store ──────────────────────────────────────────────────────────────
+const OTP_EXPIRATION_MS = 10 * 60 * 1000; // 10 minutes
 interface OTPEntry {
   code: string;
   expiresAt: number;
@@ -25,7 +26,7 @@ export function generateOTP(): string {
 export function storeOTP(email: string, code: string): void {
   otpStore.set(email.toLowerCase(), {
     code,
-    expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+    expiresAt: Date.now() + OTP_EXPIRATION_MS,
     email: email.toLowerCase(),
   });
 }
