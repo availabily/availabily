@@ -272,8 +272,20 @@ export function SignupForm() {
       )}
 
       <Button type="submit" loading={loading} size="lg" className="w-full">
-        Create my page →
+        Create page and text link →
       </Button>
+
+      <p className="text-center text-xs text-slate-400">
+        By signing up, you agree to our{' '}
+        <a href="/terms" className="underline hover:text-slate-600" target="_blank" rel="noopener noreferrer">
+          Terms and Conditions
+        </a>{' '}
+        and{' '}
+        <a href="/privacy" className="underline hover:text-slate-600" target="_blank" rel="noopener noreferrer">
+          Privacy Policy
+        </a>
+        .
+      </p>
     </form>
   );
 }
