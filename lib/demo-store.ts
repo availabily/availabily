@@ -4,16 +4,14 @@
  * Data persists for the lifetime of the dev server process.
  */
 
-import { User, TimeRule, Meeting, Notification } from './types';
+import { User, TimeRule, Meeting } from './types';
 
 const DEMO_PHONE = '+10000000000';
-const DEMO_EMAIL = 'demo@example.com';
 export const DEMO_HANDLE = 'demo';
 
 const users: User[] = [
   {
     phone: DEMO_PHONE,
-    email: DEMO_EMAIL,
     handle: DEMO_HANDLE,
     timezone: 'America/Los_Angeles',
     created_at: new Date().toISOString(),
@@ -34,7 +32,6 @@ const timeRules: TimeRule[] = [1, 2, 3, 4, 5].map((dow, i) => ({
 }));
 
 const meetings: Meeting[] = [];
-const notifications: Notification[] = [];
 
 export const demoStore = {
   getUserByHandle(handle: string): User | null {
@@ -43,10 +40,6 @@ export const demoStore = {
 
   getUserByPhone(phone: string): User | null {
     return users.find(u => u.phone === phone) ?? null;
-  },
-
-  getUserByEmail(email: string): User | null {
-    return users.find(u => u.email === email) ?? null;
   },
 
   createUser(user: User): void {
@@ -104,50 +97,4 @@ export const demoStore = {
         m.created_at >= since
     ).length;
   },
-
-  // Notification methods
-  createNotification(notification: Notification): void {
-    notifications.push(notification);
-  },
-
-  getNotifications(userPhone: string): Notification[] {
-    return notifications
-      .filter(n => n.user_phone === userPhone)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  },
-
-  getUnreadCount(userPhone: string): number {
-    return notifications.filter(n => n.user_phone === userPhone && !n.read).length;
-  },
-
-  markNotificationRead(id: string): void {
-    const idx = notifications.findIndex(n => n.id === id);
-    if (idx !== -1) {
-      notifications[idx] = { ...notifications[idx], read: true };
-    }
-  },
-
-  markAllNotificationsRead(userPhone: string): void {
-    for (let i = 0; i < notifications.length; i++) {
-      if (notifications[i].user_phone === userPhone) {
-        notifications[i] = { ...notifications[i], read: true };
-      }
-    }
-  },
-
-  getPendingMeetings(userPhone: string): Meeting[] {
-    return meetings.filter(m => m.user_phone === userPhone && m.status === 'pending');
-  },
-
-  getRecentMeetings(userPhone: string, fromDate: string): Meeting[] {
-    return meetings
-      .filter(
-        m =>
-          m.user_phone === userPhone &&
-          m.status !== 'pending' &&
-          m.meeting_date >= fromDate
-      )
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  },
 };
-

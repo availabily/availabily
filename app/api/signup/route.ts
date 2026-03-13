@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
         }));
       if (rules.length > 0) demoStore.createTimeRules(rules);
     }
+    await sendSMS(phone, `Your AM or PM? page is live. ${baseUrl}/${handle}`);
     return NextResponse.json({ success: true, handle });
   }
 
@@ -132,13 +133,13 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Try SMS as fallback (silent)
+  // Send welcome SMS
   try {
     await sendSMS(phone, `Your AM or PM? page is live. ${baseUrl}/${handle}`);
   } catch (err) {
-    console.error('Failed to send welcome SMS (non-fatal):', err);
+    console.error('Failed to send welcome SMS:', err);
+    // Don't fail the signup if SMS fails
   }
 
   return NextResponse.json({ success: true, handle });
 }
-
