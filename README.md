@@ -4,7 +4,7 @@ A minimal, beautiful scheduling app. Share your availability link → visitors p
 
 ## Quick preview (no accounts needed)
 
-Run the app locally in **demo mode** — no Supabase, no Infobip, no sign-up required:
+Run the app locally in **demo mode** — no Supabase, no Twilio, no sign-up required:
 
 ```bash
 git clone https://github.com/availabily/availabily
@@ -39,7 +39,7 @@ In demo mode, SMS messages are **printed to your terminal** instead of sent. All
 - **Next.js App Router** + TypeScript
 - **TailwindCSS**
 - **Supabase** (PostgreSQL)
-- **Infobip** (SMS)
+- **Twilio** (SMS)
 - **Vercel** (deployment)
 
 ## Production Setup
@@ -65,8 +65,9 @@ NEXT_PUBLIC_DEMO_MODE=false
 NEXT_PUBLIC_SUPABASE_URL=         # From Supabase project settings
 NEXT_PUBLIC_SUPABASE_ANON_KEY=    # From Supabase project settings
 SUPABASE_SERVICE_ROLE_KEY=        # From Supabase project settings (secret)
-INFOBIP_API_KEY=                  # From Infobip dashboard
-INFOBIP_API_BASE_URL=             # From Infobip dashboard (e.g., abc123.api.infobip.com)
+TWILIO_ACCOUNT_SID=               # From Twilio console
+TWILIO_AUTH_TOKEN=                # From Twilio console (secret)
+TWILIO_PHONE_NUMBER=              # Your Twilio phone number in E.164 format (e.g. +18005551234)
 NEXT_PUBLIC_BASE_URL=https://amorpm.com
 ```
 
@@ -110,7 +111,7 @@ availabily/
 │   ├── scheduling.ts           # Slot computation engine
 │   ├── demo-store.ts           # In-memory store for demo mode
 │   ├── supabase.ts             # Supabase client
-│   ├── infobip.ts              # Infobip SMS helper
+│   ├── twilio.ts               # Twilio SMS helper
 │   ├── utils.ts                # Formatting utilities
 │   └── types.ts                # TypeScript types
 ├── components/
