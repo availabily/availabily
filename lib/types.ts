@@ -1,6 +1,6 @@
 export interface User {
   phone: string;
-  email: string;
+  email?: string;
   handle: string;
   timezone: string;
   created_at: string;
