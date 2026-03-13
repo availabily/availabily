@@ -1,14 +1,12 @@
 -- Users table
 CREATE TABLE users (
   phone text PRIMARY KEY,
-  email text,
   handle text UNIQUE NOT NULL,
   timezone text NOT NULL DEFAULT 'America/Los_Angeles',
   created_at timestamptz DEFAULT now()
 );
 
 CREATE INDEX users_handle_idx ON users(handle);
-CREATE INDEX users_email_idx ON users(email);
 
 -- Time rules table
 CREATE TABLE time_rules (
@@ -42,18 +40,3 @@ CREATE TABLE meetings (
 
 CREATE INDEX meetings_confirm_token_idx ON meetings(confirm_token);
 CREATE INDEX meetings_user_phone_idx ON meetings(user_phone);
-
--- Notifications table
-CREATE TABLE notifications (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_phone text NOT NULL REFERENCES users(phone) ON DELETE CASCADE,
-  type text NOT NULL,
-  title text NOT NULL,
-  body text NOT NULL,
-  link text,
-  read boolean NOT NULL DEFAULT false,
-  created_at timestamptz DEFAULT now()
-);
-
-CREATE INDEX notifications_user_phone_idx ON notifications(user_phone);
-
