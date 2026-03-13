@@ -45,6 +45,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Handle must be 2-30 lowercase alphanumeric characters or hyphens' }, { status: 400 });
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
+
   // ── Demo mode: use in-memory store ──
   if (isDemo) {
     if (demoStore.getUserByHandle(handle)) {
@@ -68,7 +70,6 @@ export async function POST(request: NextRequest) {
         }));
       if (rules.length > 0) demoStore.createTimeRules(rules);
     }
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
     await sendSMS(phone, `Your AM or PM? page is live. ${baseUrl}/${handle}`);
     return NextResponse.json({ success: true, handle });
   }
@@ -133,7 +134,6 @@ export async function POST(request: NextRequest) {
   }
 
   // Send welcome SMS
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
   try {
     await sendSMS(phone, `Your AM or PM? page is live. ${baseUrl}/${handle}`);
   } catch (err) {
