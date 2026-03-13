@@ -43,7 +43,6 @@ const TIMEZONES = [
 
 export function SignupForm() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [handle, setHandle] = useState('');
   const [timezone, setTimezone] = useState(() => {
@@ -79,12 +78,6 @@ export function SignupForm() {
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-
-    if (!email.trim()) {
-      newErrors.email = 'Business email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      newErrors.email = 'Please enter a valid email address';
-    }
 
     if (!phone.trim()) {
       newErrors.phone = 'Phone number is required';
@@ -123,7 +116,6 @@ export function SignupForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: email.trim().toLowerCase(),
           phone: normalizedPhone,
           handle,
           timezone,
@@ -148,17 +140,6 @@ export function SignupForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <Input
-        id="email"
-        label="Business email"
-        placeholder="you@business.com"
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        error={errors.email}
-        autoComplete="email"
-      />
-
       <Input
         id="phone"
         label="Phone number"

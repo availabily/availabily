@@ -108,18 +108,20 @@ export async function POST(request: NextRequest) {
 
     // Send email notification to owner
     const confirmUrl = `${baseUrl}/c/${confirm_token}`;
-    await sendEmail({
-      to: user.email,
-      subject: `New booking request from ${visitor_name}`,
-      text: [
-        `New time request`,
-        `${formatDateDisplay(date)} at ${timeDisplay}`,
-        `From: ${visitor_name} – ${formatPhone(visitor_phone)}`,
-        `Address: ${visitor_address}`,
-        `Confirm: ${confirmUrl}`,
-      ].join('\n'),
-      html: `<p><strong>New booking request</strong></p><p>${visitor_name} wants to meet on <strong>${formatDateDisplay(date)} at ${timeDisplay}</strong></p><p>Phone: ${formatPhone(visitor_phone)}</p><p>Address: ${visitor_address}</p><p><a href="${confirmUrl}" style="background:#4f46e5;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Confirm Meeting</a></p>`,
-    });
+    if (user.email) {
+      await sendEmail({
+        to: user.email,
+        subject: `New booking request from ${visitor_name}`,
+        text: [
+          `New time request`,
+          `${formatDateDisplay(date)} at ${timeDisplay}`,
+          `From: ${visitor_name} – ${formatPhone(visitor_phone)}`,
+          `Address: ${visitor_address}`,
+          `Confirm: ${confirmUrl}`,
+        ].join('\n'),
+        html: `<p><strong>New booking request</strong></p><p>${visitor_name} wants to meet on <strong>${formatDateDisplay(date)} at ${timeDisplay}</strong></p><p>Phone: ${formatPhone(visitor_phone)}</p><p>Address: ${visitor_address}</p><p><a href="${confirmUrl}" style="background:#4f46e5;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Confirm Meeting</a></p>`,
+      });
+    }
 
     // SMS fallback (silent)
     try {
