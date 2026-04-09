@@ -47,3 +47,37 @@ export interface AvailabilityResponse {
   timezone: string;
   days: DayAvailability[];
 }
+
+// ── Profile Layer Types ──
+
+export interface PromptBlock {
+  id: string;
+  prompt: string;
+  answer: string;
+}
+
+export interface Profile {
+  user_phone: string;
+  display_name: string;
+  business_name: string;
+  headline: string;
+  bio: string;
+  avatar_url: string;
+  gallery_urls: string[];
+  service_category: string;
+  location: string;
+  trust_bullets: string[];
+  prompt_blocks: PromptBlock[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProfileImage {
+  id: string;
+  user_phone: string;
+  image_type: 'avatar' | 'gallery';
+  url: string;
+  thumbnail_url: string;
+  sort_order: number;
+  created_at?: string;
+}

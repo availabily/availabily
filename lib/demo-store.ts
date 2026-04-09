@@ -4,7 +4,7 @@
  * Data persists for the lifetime of the dev server process.
  */
 
-import { User, TimeRule, Meeting } from './types';
+import { User, TimeRule, Meeting, Profile, ProfileImage } from './types';
 
 const DEMO_PHONE = '+10000000000';
 export const DEMO_HANDLE = 'demo';
@@ -32,6 +32,31 @@ const timeRules: TimeRule[] = [1, 2, 3, 4, 5].map((dow, i) => ({
 }));
 
 const meetings: Meeting[] = [];
+
+// ── Profile layer ──
+
+const profiles: Profile[] = [
+  {
+    user_phone: DEMO_PHONE,
+    display_name: 'Jake Martinez',
+    business_name: "Jake's Mobile Detail",
+    headline: 'Premium auto detailing in Maui',
+    bio: 'I bring the shop to you. Full interior/exterior detail, ceramic coating, and paint correction — all done at your home or office.',
+    avatar_url: '',
+    gallery_urls: [],
+    service_category: 'Auto Detailing',
+    location: 'Lahaina, HI',
+    trust_bullets: ['5-star rated', 'Licensed & insured', '500+ clients served'],
+    prompt_blocks: [
+      { id: 'pb-1', prompt: 'What people book me for', answer: 'Full interior/exterior details, ceramic coatings, and paint correction for daily drivers and luxury vehicles.' },
+      { id: 'pb-2', prompt: 'What to expect', answer: 'I come to you fully equipped. Most details take 2–4 hours. You just pick a time and I handle the rest.' },
+    ],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
+const profileImages: ProfileImage[] = [];
 
 export const demoStore = {
   getUserByHandle(handle: string): User | null {
@@ -96,5 +121,51 @@ export const demoStore = {
         m.status === 'pending' &&
         m.created_at >= since
     ).length;
+  },
+
+  // ── Profile methods ──
+
+  getProfile(userPhone: string): Profile | null {
+    return profiles.find(p => p.user_phone === userPhone) ?? null;
+  },
+
+  getProfileByHandle(handle: string): Profile | null {
+    const user = users.find(u => u.handle === handle);
+    if (!user) return null;
+    return profiles.find(p => p.user_phone === user.phone) ?? null;
+  },
+
+  upsertProfile(profile: Profile): void {
+    const idx = profiles.findIndex(p => p.user_phone === profile.user_phone);
+    const now = new Date().toISOString();
+    if (idx !== -1) {
+      profiles[idx] = { ...profile, updated_at: now, created_at: profiles[idx].created_at };
+    } else {
+      profiles.push({ ...profile, created_at: now, updated_at: now });
+    }
+  },
+
+  // ── Profile image methods ──
+
+  getProfileImages(userPhone: string): ProfileImage[] {
+    return profileImages
+      .filter(i => i.user_phone === userPhone)
+      .sort((a, b) => a.sort_order - b.sort_order);
+  },
+
+  createProfileImage(image: ProfileImage): void {
+    profileImages.push(image);
+  },
+
+  deleteProfileImage(id: string): void {
+    const idx = profileImages.findIndex(i => i.id === id);
+    if (idx !== -1) profileImages.splice(idx, 1);
+  },
+
+  reorderProfileImages(userPhone: string, orderedIds: string[]): void {
+    orderedIds.forEach((id, index) => {
+      const img = profileImages.find(i => i.id === id && i.user_phone === userPhone);
+      if (img) img.sort_order = index;
+    });
   },
 };
