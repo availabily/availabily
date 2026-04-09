@@ -29,19 +29,18 @@ export default function LandingPage() {
           <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">Free &amp; simple</span>
         </div>
         <h1 className="text-5xl sm:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight mb-6">
-          Schedule jobs.
+          Your booking profile,
           <br />
-          <span className="text-indigo-600">Get booked by text.</span>
+          <span className="text-indigo-600">in 2 minutes.</span>
         </h1>
         <p className="text-xl text-slate-500 leading-relaxed mb-10 max-w-2xl mx-auto">
-          Create your business page, text the link to customers, and they pick a time and enter their details. You get an SMS to confirm.
-          No apps, no dashboards, no friction.
+          Let customers see who they&apos;re booking with — then pick a time. No apps, no dashboards, no friction.
         </p>
         <Link
           href="/signup"
           className="inline-flex items-center gap-2 bg-indigo-600 text-white font-semibold text-lg px-8 py-4 rounded-2xl hover:bg-indigo-700 transition-all duration-200 shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 active:scale-[0.98]"
         >
-          Create your page →
+          Set up your profile →
         </Link>
         <p className="mt-4 text-sm text-slate-400">Free. No credit card. Takes 60 seconds.</p>
       </section>
@@ -55,8 +54,8 @@ export default function LandingPage() {
           {[
             {
               step: '1',
-              title: 'Create your page',
-              description: 'Set up your business schedule in 60 seconds. Get a link like amorpm.com/lahainawindows.',
+              title: 'Set up your profile',
+              description: 'Build your business profile and schedule in 60 seconds. Get a link like amorpm.com/lahainawindows.',
               icon: '🏢',
             },
             {
@@ -102,7 +101,7 @@ export default function LandingPage() {
             href="/signup"
             className="inline-flex items-center gap-2 bg-indigo-600 text-white font-semibold text-lg px-8 py-4 rounded-2xl hover:bg-indigo-700 transition-all duration-200 shadow-lg shadow-indigo-200 active:scale-[0.98]"
           >
-            Create your page →
+            Set up your profile →
           </Link>
         </div>
       </section>

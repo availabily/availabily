@@ -38,12 +38,12 @@ function SuccessContent() {
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-10 space-y-6">
           <div className="text-6xl">🎉</div>
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 mb-2">Your page is live!</h1>
-            <p className="text-slate-500">Text this link to your customers so they can book a time with you.</p>
+            <h1 className="text-3xl font-extrabold text-slate-900 mb-2">Your profile is live ✨</h1>
+            <p className="text-slate-500">Share your link with customers so they can book a time with you.</p>
           </div>
 
           <div className="rounded-2xl bg-indigo-50 border border-indigo-100 px-5 py-4">
-            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-1">Your shareable link</p>
+            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-1">Your link</p>
             <p className="text-lg font-bold text-indigo-700 break-all">{displayUrl}</p>
           </div>
 
