@@ -14,26 +14,31 @@ const CARD_WIDTH_RATIO = 0.82; // matches w-[82%] in JSX
 const CARD_GAP_PX = 12; // matches gap-3
 const PLACEHOLDER_COUNT = 3;
 
-function PlaceholderCard() {
+const PLACEHOLDER_GRADIENTS = [
+  'from-brand-100 via-brand-50 to-violet-100/60',
+  'from-violet-100/80 via-white to-brand-100/50',
+  'from-brand-50 via-violet-50 to-brand-100/40',
+];
+
+const PLACEHOLDER_ICONS = [
+  { emoji: '📸', text: 'Add photos to your profile' },
+  { emoji: '✨', text: 'Show off your work' },
+  { emoji: '🎨', text: 'Make it yours' },
+];
+
+function PlaceholderCard({ index }: { index: number }) {
   return (
-    <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-brand-50 via-white to-brand-100/60 border border-brand-100/80 flex items-center justify-center">
-      <div className="flex flex-col items-center text-brand-400">
-        <svg
-          className="w-10 h-10 mb-1.5 opacity-70"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.6}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <rect x="3" y="4" width="18" height="16" rx="3" />
-          <circle cx="9" cy="10" r="1.6" />
-          <path d="M3 17l5-5 4 4 3-3 6 6" />
-        </svg>
-        <span className="text-[11px] font-medium uppercase tracking-wider opacity-70">
-          Photo coming soon
+    <div className={cn(
+      'relative aspect-[4/3] rounded-2xl overflow-hidden border border-brand-100/60 flex items-center justify-center',
+      'bg-gradient-to-br',
+      PLACEHOLDER_GRADIENTS[index % PLACEHOLDER_GRADIENTS.length]
+    )}>
+      <div className="flex flex-col items-center gap-2 text-center px-6">
+        <span className="text-3xl" role="img" aria-hidden>
+          {PLACEHOLDER_ICONS[index % PLACEHOLDER_ICONS.length].emoji}
+        </span>
+        <span className="text-[13px] font-medium text-brand-600/70 leading-snug">
+          {PLACEHOLDER_ICONS[index % PLACEHOLDER_ICONS.length].text}
         </span>
       </div>
     </div>
@@ -79,7 +84,7 @@ export function SwipeGallery({
         {useEmptyState
           ? Array.from({ length: PLACEHOLDER_COUNT }).map((_, idx) => (
               <div key={`placeholder-${idx}`} className="flex-none w-[82%] snap-start">
-                <PlaceholderCard />
+                <PlaceholderCard index={idx} />
               </div>
             ))
           : images.map((url, idx) => (
