@@ -17,7 +17,12 @@ export function TrustBulletRow({ bullets, className }: TrustBulletRowProps) {
       {bullets.slice(0, 3).map((bullet, idx) => (
         <span
           key={idx}
-          className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 border border-brand-100 px-3 py-1 text-xs font-semibold text-brand-700"
+          style={{ animationDelay: `${idx * 80}ms` }}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-full bg-brand-50 border border-brand-100 px-3 py-1 text-xs font-semibold text-brand-700',
+            'transition-all duration-200 hover:bg-brand-100 hover:border-brand-200',
+            'animate-in fade-in slide-in-from-bottom-1 duration-300'
+          )}
         >
           <svg
             className="w-3 h-3 text-brand-600 flex-shrink-0"

@@ -16,7 +16,7 @@ const PLACEHOLDER_COUNT = 3;
 
 function PlaceholderCard() {
   return (
-    <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-brand-50 via-white to-brand-100/60 border border-brand-100/80 flex items-center justify-center">
+    <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gradient-to-br from-brand-50 via-white to-brand-100/60 border border-brand-100/80 flex items-center justify-center">
       <div className="flex flex-col items-center text-brand-400">
         <svg
           className="w-10 h-10 mb-1.5 opacity-70"
@@ -84,13 +84,25 @@ export function SwipeGallery({
             ))
           : images.map((url, idx) => (
               <div key={idx} className="flex-none w-[82%] snap-start">
-                <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
+                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] group">
                   <img
                     src={url}
                     alt={`Gallery image ${idx + 1}`}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                     loading={idx === 0 ? 'eager' : 'lazy'}
                   />
+                  {/* Gradient overlay at bottom */}
+                  <div
+                    aria-hidden
+                    className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent pointer-events-none"
+                  />
+                  {/* Image counter overlay */}
+                  <div
+                    aria-label={`Image ${idx + 1} of ${images.length}`}
+                    className="absolute top-3 right-3 rounded-full bg-black/40 backdrop-blur-sm px-2.5 py-1 text-[11px] font-semibold text-white"
+                  >
+                    {idx + 1} / {images.length}
+                  </div>
                 </div>
               </div>
             ))}

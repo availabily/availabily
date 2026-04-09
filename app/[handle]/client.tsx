@@ -11,6 +11,8 @@ import { StickyBookingCTA } from '@/components/sticky-booking-cta';
 import { DaySelector } from '@/components/day-selector';
 import { TimeSlotGrid } from '@/components/time-slot-grid';
 import { RequestForm } from '@/components/request-form';
+import { QuickFactsRow } from '@/components/quick-facts-row';
+import { ProfileFooter } from '@/components/profile-footer';
 import { AvailabilityResponse, Profile } from '@/lib/types';
 import Link from 'next/link';
 
@@ -22,6 +24,35 @@ type PageState = 'loading' | 'error' | 'select-time' | 'booking-form' | 'success
 
 interface ProfileResponse {
   profile: Omit<Profile, 'user_phone' | 'created_at' | 'updated_at'> | null;
+}
+
+const BIO_TRUNCATE_LENGTH = 120;
+
+function ExpandableBio({ bio, firstName }: { bio: string; firstName?: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isTruncatable = bio.length > BIO_TRUNCATE_LENGTH;
+  const displayText = isTruncatable && !expanded ? bio.slice(0, BIO_TRUNCATE_LENGTH).trimEnd() + '…' : bio;
+  const label = firstName ? `About ${firstName}` : 'About';
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] px-5 py-5">
+      <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.14em] mb-2">
+        {label}
+      </p>
+      <p className="text-[15px] text-slate-700 leading-relaxed">
+        {displayText}
+      </p>
+      {isTruncatable && (
+        <button
+          type="button"
+          onClick={() => setExpanded(e => !e)}
+          className="mt-2 text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors"
+        >
+          {expanded ? 'Show less' : 'Read more'}
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) {
@@ -107,14 +138,37 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
   const displayName = profile?.display_name || profile?.business_name || `@${handle}`;
   const hasProfile = !!profile && !!(profile.display_name || profile.business_name);
 
+  // Check if there are available slots today
+  const today = new Date().toISOString().slice(0, 10);
+  const hasAvailabilityToday = !!(availability?.days.find(d => d.date === today && d.slots.length > 0));
+
+  // Derive first name for personalised "About Jake" label
+  const firstName = profile?.display_name?.split(' ')[0];
+
   // ─── Profile-first layout ───
   if (hasProfile) {
     const gallery = profile!.gallery_urls;
     const showBio = !!profile!.bio;
     const showPrompts = profile!.prompt_blocks.length > 0;
+    const firstGalleryImage = gallery[0] ?? null;
 
     return (
-      <main className="min-h-screen bg-gradient-to-br from-white via-brand-50/60 to-brand-100/40">
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 via-brand-50/50 to-violet-50/40">
+        {/* Blurred hero background image */}
+        {firstGalleryImage && (
+          <div
+            aria-hidden
+            className="fixed inset-0 -z-10 pointer-events-none"
+          >
+            <img
+              src={firstGalleryImage}
+              alt=""
+              className="w-full h-full object-cover opacity-10 blur-2xl scale-110"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/80 to-white/95" />
+          </div>
+        )}
+
         <div className="max-w-[480px] mx-auto px-5 py-7 pb-28 md:pb-12">
           {/* Brand mark */}
           <div className="mb-6">
@@ -159,22 +213,27 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
             <div className="stagger space-y-5">
               {/* A. Profile Hero Card */}
               <div ref={heroRef}>
-                <ProfileHeroCard profile={profile!} handle={handle} />
+                <ProfileHeroCard
+                  profile={profile!}
+                  handle={handle}
+                  hasAvailabilityToday={hasAvailabilityToday}
+                />
               </div>
 
               {/* B. Gallery (always renders; shows placeholder cards when empty) */}
               <SwipeGallery images={gallery} showPlaceholderWhenEmpty />
 
+              {/* Quick Facts Row */}
+              <QuickFactsRow
+                serviceCategory={profile!.service_category}
+                location={profile!.location}
+                responseTimeMinutes={60}
+                trustBulletsCount={profile!.trust_bullets.length}
+              />
+
               {/* C. Bio */}
               {showBio && (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] px-5 py-5">
-                  <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.14em] mb-2">
-                    About
-                  </p>
-                  <p className="text-[15px] text-slate-700 leading-relaxed">
-                    {profile!.bio}
-                  </p>
-                </div>
+                <ExpandableBio bio={profile!.bio} firstName={firstName} />
               )}
 
               {/* C. Prompt Cards */}
@@ -188,13 +247,15 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
 
               {/* D. Availability / Booking section */}
               {pageState === 'select-time' && availability && (
-                <AvailabilityCard
-                  days={availability.days}
-                  selectedDate={selectedDate}
-                  onSelectDate={setSelectedDate}
-                  selectedSlot={selectedSlot}
-                  onSelectSlot={handleSlotSelect}
-                />
+                <div id="pick-a-time">
+                  <AvailabilityCard
+                    days={availability.days}
+                    selectedDate={selectedDate}
+                    onSelectDate={setSelectedDate}
+                    selectedSlot={selectedSlot}
+                    onSelectSlot={handleSlotSelect}
+                  />
+                </div>
               )}
 
               {/* E. Lock-in Form */}
@@ -218,6 +279,9 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
                   startTime={selectedSlot ?? undefined}
                 />
               )}
+
+              {/* Footer */}
+              <ProfileFooter />
             </div>
           )}
 
