@@ -45,7 +45,7 @@ function ExpandableBio({ bio, firstName }: { bio: string; firstName?: string }) 
       {isTruncatable && (
         <button
           type="button"
-          onClick={() => setExpanded(e => !e)}
+          onClick={() => setExpanded(prev => !prev)}
           className="mt-2 text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors"
         >
           {expanded ? 'Show less' : 'Read more'}
@@ -227,7 +227,7 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
               <QuickFactsRow
                 serviceCategory={profile!.service_category}
                 location={profile!.location}
-                responseTimeMinutes={60}
+                responseTimeMinutes={profile!.response_time_minutes}
                 trustBulletsCount={profile!.trust_bullets.length}
               />
 

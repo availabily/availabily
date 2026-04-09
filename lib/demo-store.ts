@@ -51,6 +51,7 @@ const profiles: Profile[] = [
     ],
     service_category: 'Auto Detailing',
     location: 'Lahaina, HI',
+    response_time_minutes: 60,
     trust_bullets: ['5-star rated', 'Licensed & insured', '500+ clients served'],
     prompt_blocks: [
       { id: 'pb-1', prompt: 'What people book me for', answer: 'Full interior/exterior details, ceramic coatings, and paint correction for daily drivers and luxury vehicles.' },

@@ -114,15 +114,19 @@ export function QuickFactsRow({
   if (chips.length === 0) return null;
 
   return (
-    <div
-      className={cn(
-        'flex gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden touch-scroll-x',
-        className
-      )}
-    >
-      {chips.map((chip, idx) => (
-        <Chip key={idx} {...chip} />
-      ))}
+    <div className={cn('relative', className)}>
+      {/* Fade edge indicating more content to scroll */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white/80 to-transparent z-10"
+      />
+      <div
+        className="flex gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden touch-scroll-x pr-6"
+      >
+        {chips.map((chip, idx) => (
+          <Chip key={idx} {...chip} />
+        ))}
+      </div>
     </div>
   );
 }
