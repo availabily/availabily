@@ -92,6 +92,7 @@ export function ProfileHeroCard({ profile, handle, className }: ProfileHeroCardP
             aria-hidden
             className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-emerald-400 border-[3px] border-white shadow-sm"
           />
+          <span className="sr-only">Available now</span>
         </div>
 
         {/* Name + handle */}

@@ -66,7 +66,9 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
       });
   }, [handle]);
 
-  // Sticky CTA observer — show once user has scrolled past the hero
+  // Sticky CTA observer — show once user has scrolled past the hero.
+  // The heroRef.current guard ensures this only activates after the hero
+  // has rendered (i.e. pageState is no longer 'loading').
   useEffect(() => {
     if (!heroRef.current) return;
     const observer = new IntersectionObserver(
