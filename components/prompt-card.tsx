@@ -10,11 +10,20 @@ interface PromptCardProps {
 
 export function PromptCard({ block, className }: PromptCardProps) {
   return (
-    <div className={cn('bg-slate-50 rounded-2xl border border-slate-100 px-5 py-4', className)}>
-      <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-2">
+    <div
+      className={cn(
+        'relative bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.04)] pl-6 pr-5 py-5 overflow-hidden',
+        className
+      )}
+    >
+      <span
+        aria-hidden
+        className="absolute left-0 top-4 bottom-4 w-[3px] rounded-full bg-gradient-to-b from-brand-400 to-brand-600"
+      />
+      <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.12em] mb-2">
         {block.prompt}
       </p>
-      <p className="text-sm text-slate-700 leading-relaxed">
+      <p className="font-display text-[17px] leading-snug text-slate-900">
         {block.answer}
       </p>
     </div>

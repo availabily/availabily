@@ -9,10 +9,11 @@ import { cn } from '@/lib/cn';
 
 interface ProfilePreviewProps {
   data: ProfileFormData;
+  handle?: string;
   className?: string;
 }
 
-export function ProfilePreview({ data, className }: ProfilePreviewProps) {
+export function ProfilePreview({ data, handle, className }: ProfilePreviewProps) {
   // Convert form data to Profile shape for the hero card
   const profile: Profile = {
     user_phone: '',
@@ -46,7 +47,7 @@ export function ProfilePreview({ data, className }: ProfilePreviewProps) {
         <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Live preview</span>
       </div>
 
-      <ProfileHeroCard profile={profile} />
+      <ProfileHeroCard profile={profile} handle={handle || 'yourhandle'} />
 
       {profile.gallery_urls.length > 0 && (
         <SwipeGallery images={profile.gallery_urls} />
