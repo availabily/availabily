@@ -17,10 +17,10 @@ export function StickyBookingCTA({ visible, onClick, className }: StickyBookingC
         className
       )}
     >
-      <div className="bg-white/90 backdrop-blur-md border-t border-slate-100 px-5 py-3 safe-bottom">
+      <div className="bg-white/90 backdrop-blur-md border-t border-slate-100 px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <button
           onClick={onClick}
-          className="w-full bg-indigo-600 text-white font-semibold text-base px-6 py-3.5 rounded-2xl hover:bg-indigo-700 transition-all duration-200 shadow-lg shadow-indigo-200 active:scale-[0.98]"
+          className="w-full bg-brand-600 text-white font-semibold text-base px-6 py-3.5 rounded-2xl hover:bg-brand-700 transition-all duration-200 shadow-[0_10px_24px_-8px_rgba(91,76,255,0.45)] active:scale-[0.98]"
         >
           Pick a time
         </button>

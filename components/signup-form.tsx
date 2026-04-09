@@ -320,7 +320,7 @@ export function SignupForm() {
 
       {/* Live preview column (desktop only) */}
       <div className="hidden lg:block w-[380px] flex-none sticky top-8 self-start">
-        <ProfilePreview data={profileData} />
+        <ProfilePreview data={profileData} handle={handle} />
       </div>
     </div>
   );
