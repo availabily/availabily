@@ -65,7 +65,7 @@ export function ImageUploader({
                 type="button"
                 onClick={() => onRemove(idx)}
                 className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                aria-label="Remove image"
+                aria-label={`Remove image ${idx + 1}`}
               >
                 ×
               </button>

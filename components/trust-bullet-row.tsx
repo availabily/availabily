@@ -7,6 +7,8 @@ interface TrustBulletRowProps {
   className?: string;
 }
 
+const MAX_BULLET_DISPLAY_LENGTH = 50;
+
 export function TrustBulletRow({ bullets, className }: TrustBulletRowProps) {
   if (bullets.length === 0) return null;
 
@@ -24,7 +26,7 @@ export function TrustBulletRow({ bullets, className }: TrustBulletRowProps) {
               clipRule="evenodd"
             />
           </svg>
-          {bullet.length > 50 ? bullet.slice(0, 47) + '…' : bullet}
+          {bullet.length > MAX_BULLET_DISPLAY_LENGTH ? bullet.slice(0, MAX_BULLET_DISPLAY_LENGTH - 3) + '…' : bullet}
         </span>
       ))}
     </div>

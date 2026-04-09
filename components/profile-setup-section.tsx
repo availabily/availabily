@@ -282,13 +282,15 @@ const MAX_IMAGE_WIDTH = 1200;
 
 // Client-side file → data URL (for preview and demo mode)
 function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
     const img = new Image();
     const reader = new FileReader();
 
+    reader.onerror = () => reject(new Error('Failed to read file'));
     reader.onload = () => {
+      img.onerror = () => reject(new Error('Failed to load image'));
       img.onload = () => {
         // Resize to max width, preserving aspect ratio
         let { width, height } = img;

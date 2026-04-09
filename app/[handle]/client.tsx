@@ -84,6 +84,7 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
     setSelectedSlot(startTime);
     setPageState('booking-form');
     // Smooth scroll to form
+    // Brief delay to allow DOM to render the form before scrolling
     setTimeout(() => {
       bookingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
