@@ -8,6 +8,9 @@ interface SwipeGalleryProps {
   className?: string;
 }
 
+const CARD_WIDTH_RATIO = 0.82; // matches w-[82%] in JSX
+const CARD_GAP_PX = 12; // matches gap-3
+
 export function SwipeGallery({ images, className }: SwipeGalleryProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -16,9 +19,8 @@ export function SwipeGallery({ images, className }: SwipeGalleryProps) {
     const container = scrollRef.current;
     if (!container) return;
     const scrollLeft = container.scrollLeft;
-    const cardWidth = container.offsetWidth * 0.82;
-    const gap = 12;
-    const index = Math.round(scrollLeft / (cardWidth + gap));
+    const cardWidth = container.offsetWidth * CARD_WIDTH_RATIO;
+    const index = Math.round(scrollLeft / (cardWidth + CARD_GAP_PX));
     setActiveIndex(Math.min(index, images.length - 1));
   }, [images.length]);
 

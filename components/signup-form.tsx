@@ -55,6 +55,10 @@ const DEFAULT_PROFILE: ProfileFormData = {
   gallery_urls: [],
 };
 
+function hasProfileData(data: ProfileFormData): boolean {
+  return !!(data.display_name || data.business_name || data.headline || data.bio || data.avatar_url || data.gallery_urls.length > 0);
+}
+
 export function SignupForm() {
   const router = useRouter();
   const [phone, setPhone] = useState('');
@@ -152,8 +156,7 @@ export function SignupForm() {
       }
 
       // Step 2: Save profile data if any fields are filled
-      const hasProfile = profileData.display_name || profileData.business_name || profileData.headline || profileData.bio || profileData.avatar_url || profileData.gallery_urls.length > 0;
-      if (hasProfile) {
+      if (hasProfileData(profileData)) {
         try {
           await fetch('/api/profile', {
             method: 'POST',

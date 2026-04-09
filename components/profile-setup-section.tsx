@@ -278,6 +278,8 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
   );
 }
 
+const MAX_IMAGE_WIDTH = 1200;
+
 // Client-side file → data URL (for preview and demo mode)
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve) => {
@@ -288,12 +290,11 @@ function fileToDataUrl(file: File): Promise<string> {
 
     reader.onload = () => {
       img.onload = () => {
-        // Resize to max 1200px wide, preserving aspect ratio
-        const maxWidth = 1200;
+        // Resize to max width, preserving aspect ratio
         let { width, height } = img;
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
+        if (width > MAX_IMAGE_WIDTH) {
+          height = (height * MAX_IMAGE_WIDTH) / width;
+          width = MAX_IMAGE_WIDTH;
         }
         canvas.width = width;
         canvas.height = height;

@@ -5,6 +5,8 @@ import { ProfileImage } from '@/lib/types';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -28,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Limit file size to 5MB
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json({ error: 'File must be under 5MB' }, { status: 400 });
     }
 

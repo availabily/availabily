@@ -12,6 +12,7 @@ interface ProfileHeroCardProps {
 function AvatarInitials({ name, className }: { name: string; className?: string }) {
   const initials = name
     .split(' ')
+    .filter(w => w.length > 0)
     .map(w => w[0])
     .join('')
     .slice(0, 2)
