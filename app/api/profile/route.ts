@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { error } = await supabase
-    .from('profiles')
+    .from('amorpm_profiles')
     .upsert({
       user_phone: body.phone,
       display_name: profile.display_name,

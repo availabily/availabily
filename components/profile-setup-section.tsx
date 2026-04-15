@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ImageUploader } from '@/components/image-uploader';
 import { PromptBlock } from '@/lib/types';
 import { cn } from '@/lib/cn';
+import { uploadImage } from '@/lib/upload-image';
 
 const PROMPT_SUGGESTIONS = [
   'What people book me for',
@@ -67,15 +68,25 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
   };
 
   const handleAvatarUpload = useCallback(async (file: File): Promise<string | null> => {
-    const url = await fileToDataUrl(file);
-    update({ avatar_url: url });
-    return url;
+    try {
+      const url = await uploadImage(file);
+      update({ avatar_url: url });
+      return url;
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+      return null;
+    }
   }, [update]);
 
   const handleGalleryUpload = useCallback(async (file: File): Promise<string | null> => {
-    const url = await fileToDataUrl(file);
-    update({ gallery_urls: [...data.gallery_urls, url] });
-    return url;
+    try {
+      const url = await uploadImage(file);
+      update({ gallery_urls: [...data.gallery_urls, url] });
+      return url;
+    } catch (err) {
+      console.error('Gallery upload failed:', err);
+      return null;
+    }
   }, [data.gallery_urls, update]);
 
   const handleGalleryRemove = useCallback((index: number) => {
@@ -278,33 +289,3 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
   );
 }
 
-const MAX_IMAGE_WIDTH = 1200;
-
-// Client-side file → data URL (for preview and demo mode)
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d')!;
-    const img = new Image();
-    const reader = new FileReader();
-
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.onload = () => {
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.onload = () => {
-        // Resize to max width, preserving aspect ratio
-        let { width, height } = img;
-        if (width > MAX_IMAGE_WIDTH) {
-          height = (height * MAX_IMAGE_WIDTH) / width;
-          width = MAX_IMAGE_WIDTH;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-  });
-}

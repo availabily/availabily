@@ -51,7 +51,7 @@ export async function GET(
   }
 
   const { data: profile } = await supabase
-    .from('profiles')
+    .from('amorpm_profiles')
     .select('*')
     .eq('user_phone', user.phone)
     .single();

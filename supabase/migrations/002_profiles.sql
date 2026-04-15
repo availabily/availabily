@@ -1,5 +1,7 @@
 -- Profile table (1:1 with users)
-CREATE TABLE profiles (
+-- NOTE: renamed to amorpm_profiles in production to avoid conflict with
+-- a pre-existing profiles table from a different app on the same project.
+CREATE TABLE IF NOT EXISTS amorpm_profiles (
   user_phone text PRIMARY KEY REFERENCES users(phone) ON DELETE CASCADE,
   display_name text NOT NULL DEFAULT '',
   business_name text NOT NULL DEFAULT '',

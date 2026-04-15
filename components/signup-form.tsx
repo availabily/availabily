@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ProfileSetupSection, ProfileFormData } from '@/components/profile-setup-section';
-import { ProfilePreview } from '@/components/profile-preview';
 import { toE164, isValidE164 } from '@/lib/utils';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -56,7 +55,17 @@ const DEFAULT_PROFILE: ProfileFormData = {
 };
 
 function hasProfileData(data: ProfileFormData): boolean {
-  return !!(data.display_name || data.business_name || data.headline || data.bio || data.avatar_url || data.gallery_urls.length > 0);
+  return !!(
+    data.display_name ||
+    data.business_name ||
+    data.headline ||
+    data.bio ||
+    data.avatar_url ||
+    data.gallery_urls.length > 0 ||
+    data.location ||
+    data.trust_bullets.some(Boolean) ||
+    data.prompt_blocks.length > 0
+  );
 }
 
 export function SignupForm() {
@@ -183,9 +192,9 @@ export function SignupForm() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
-      {/* Form column */}
-      <form onSubmit={handleSubmit} className="space-y-6 flex-1 min-w-0">
+    <div>
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-6 max-w-[520px] mx-auto">
         <Input
           id="phone"
           label="Business number for confirmations"
@@ -317,11 +326,6 @@ export function SignupForm() {
           .
         </p>
       </form>
-
-      {/* Live preview column (desktop only) */}
-      <div className="hidden lg:block w-[380px] flex-none sticky top-8 self-start">
-        <ProfilePreview data={profileData} handle={handle} />
-      </div>
     </div>
   );
 }

@@ -115,7 +115,7 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
 
     return (
       <main className="min-h-screen bg-gradient-to-br from-white via-brand-50/60 to-brand-100/40">
-        <div className="max-w-[480px] mx-auto px-5 py-7 pb-28 md:pb-12">
+        <div className="max-w-[960px] mx-auto px-5 pt-7 pb-28 lg:pb-12">
           {/* Brand mark */}
           <div className="mb-6">
             <Link
@@ -130,7 +130,7 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
 
           {/* Loading */}
           {pageState === 'loading' && (
-            <div className="space-y-4 animate-pulse">
+            <div className="max-w-[480px] mx-auto space-y-4 animate-pulse">
               <div className="h-56 rounded-[28px] bg-slate-200/70" />
               <div className="h-40 rounded-2xl bg-slate-200/70" />
               <div className="h-32 rounded-2xl bg-slate-200/70" />
@@ -139,7 +139,7 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
 
           {/* Error */}
           {pageState === 'error' && (
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-8 text-center">
+            <div className="max-w-[480px] mx-auto bg-white rounded-3xl border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-8 text-center">
               <div className="text-4xl mb-4">🔍</div>
               <h2 className="font-display text-xl font-bold text-slate-900 mb-2">
                 Page not found
@@ -154,74 +154,108 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
             </div>
           )}
 
-          {/* Profile + booking content */}
+          {/* Profile + booking — single column on mobile, two columns on desktop */}
           {pageState !== 'loading' && pageState !== 'error' && (
-            <div className="stagger space-y-5">
-              {/* A. Profile Hero Card */}
-              <div ref={heroRef}>
-                <ProfileHeroCard profile={profile!} handle={handle} />
+            <div className="lg:grid lg:grid-cols-[1fr_420px] lg:gap-8 lg:items-start">
+
+              {/* ── Left column: Profile content ── */}
+              <div className="stagger space-y-5">
+                {/* A. Profile Hero Card */}
+                <div ref={heroRef}>
+                  <ProfileHeroCard profile={profile!} handle={handle} />
+                </div>
+
+                {/* B. Gallery (always renders; shows placeholder cards when empty) */}
+                <SwipeGallery images={gallery} showPlaceholderWhenEmpty />
+
+                {/* C. Bio */}
+                {showBio && (
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] px-5 py-5">
+                    <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.14em] mb-2">
+                      About
+                    </p>
+                    <p className="text-[15px] text-slate-700 leading-relaxed">
+                      {profile!.bio}
+                    </p>
+                  </div>
+                )}
+
+                {/* D. Prompt Cards */}
+                {showPrompts && (
+                  <div className="space-y-3">
+                    {profile!.prompt_blocks.map((block) => (
+                      <PromptCard key={block.id} block={block} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Mobile-only: booking section (rendered in DOM order for mobile) */}
+                <div className="lg:hidden space-y-5">
+                  {pageState === 'select-time' && availability && (
+                    <AvailabilityCard
+                      days={availability.days}
+                      selectedDate={selectedDate}
+                      onSelectDate={setSelectedDate}
+                      selectedSlot={selectedSlot}
+                      onSelectSlot={handleSlotSelect}
+                    />
+                  )}
+                  {pageState === 'booking-form' && selectedDate && selectedSlot && (
+                    <div ref={bookingRef}>
+                      <LockInForm
+                        handle={handle}
+                        date={selectedDate}
+                        startTime={selectedSlot}
+                        onSuccess={handleSuccess}
+                        onBack={handleBack}
+                      />
+                    </div>
+                  )}
+                  {pageState === 'success' && (
+                    <RequestSentState
+                      displayName={displayName}
+                      date={selectedDate ?? undefined}
+                      startTime={selectedSlot ?? undefined}
+                    />
+                  )}
+                </div>
               </div>
 
-              {/* B. Gallery (always renders; shows placeholder cards when empty) */}
-              <SwipeGallery images={gallery} showPlaceholderWhenEmpty />
-
-              {/* C. Bio */}
-              {showBio && (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] px-5 py-5">
-                  <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.14em] mb-2">
-                    About
-                  </p>
-                  <p className="text-[15px] text-slate-700 leading-relaxed">
-                    {profile!.bio}
-                  </p>
-                </div>
-              )}
-
-              {/* C. Prompt Cards */}
-              {showPrompts && (
-                <div className="space-y-3">
-                  {profile!.prompt_blocks.map((block) => (
-                    <PromptCard key={block.id} block={block} />
-                  ))}
-                </div>
-              )}
-
-              {/* D. Availability / Booking section */}
-              {pageState === 'select-time' && availability && (
-                <AvailabilityCard
-                  days={availability.days}
-                  selectedDate={selectedDate}
-                  onSelectDate={setSelectedDate}
-                  selectedSlot={selectedSlot}
-                  onSelectSlot={handleSlotSelect}
-                />
-              )}
-
-              {/* E. Lock-in Form */}
-              {pageState === 'booking-form' && selectedDate && selectedSlot && (
-                <div ref={bookingRef}>
-                  <LockInForm
-                    handle={handle}
-                    date={selectedDate}
-                    startTime={selectedSlot}
-                    onSuccess={handleSuccess}
-                    onBack={handleBack}
+              {/* ── Right column: Booking (desktop only, sticky) ── */}
+              <div className="hidden lg:block lg:sticky lg:top-8 space-y-5">
+                {pageState === 'select-time' && availability && (
+                  <AvailabilityCard
+                    days={availability.days}
+                    selectedDate={selectedDate}
+                    onSelectDate={setSelectedDate}
+                    selectedSlot={selectedSlot}
+                    onSelectSlot={handleSlotSelect}
                   />
-                </div>
-              )}
+                )}
+                {pageState === 'booking-form' && selectedDate && selectedSlot && (
+                  <div ref={bookingRef}>
+                    <LockInForm
+                      handle={handle}
+                      date={selectedDate}
+                      startTime={selectedSlot}
+                      onSuccess={handleSuccess}
+                      onBack={handleBack}
+                    />
+                  </div>
+                )}
+                {pageState === 'success' && (
+                  <RequestSentState
+                    displayName={displayName}
+                    date={selectedDate ?? undefined}
+                    startTime={selectedSlot ?? undefined}
+                  />
+                )}
+              </div>
 
-              {/* F. Request Sent */}
-              {pageState === 'success' && (
-                <RequestSentState
-                  displayName={displayName}
-                  date={selectedDate ?? undefined}
-                  startTime={selectedSlot ?? undefined}
-                />
-              )}
             </div>
           )}
 
-          {/* Sticky mobile CTA */}
+          {/* Sticky mobile CTA (hidden on desktop since booking column is always visible) */}
           <StickyBookingCTA
             visible={showStickyCTA && pageState === 'select-time'}
             onClick={scrollToBooking}
