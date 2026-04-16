@@ -216,7 +216,7 @@ export function SignupForm() {
       // Step 2: Upload images to Supabase Storage (via /api/upload).
       // Must happen after user creation because profile_images.user_phone
       // has a FK to users.phone. In demo mode, uploads are kept in-memory.
-      let finalAvatarUrl = profileData.avatar_url;
+      let finalAvatarUrl = '';
       if (profileData.avatar_file) {
         const uploadedUrl = await uploadImageFile(
           profileData.avatar_file,
@@ -236,30 +236,44 @@ export function SignupForm() {
         if (uploadedUrl) finalGalleryUrls.push(uploadedUrl);
       }
 
+      // Abort if the user provided images but all uploads failed.
+      if (profileData.avatar_file && !finalAvatarUrl) {
+        setError('Avatar upload failed. Please try again.');
+        return;
+      }
+      if (profileData.gallery_files.length > 0 && finalGalleryUrls.length === 0) {
+        setError('Gallery image upload failed. Please try again.');
+        return;
+      }
+
       // Step 3: Save profile data (if any fields are populated).
       if (hasProfileData(profileData)) {
-        try {
-          await fetch('/api/profile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              phone: normalizedPhone,
-              display_name: profileData.display_name,
-              business_name: profileData.business_name,
-              headline: profileData.headline,
-              bio: profileData.bio,
-              location: profileData.location,
-              avatar_url: finalAvatarUrl,
-              gallery_urls: finalGalleryUrls,
-              trust_bullets: profileData.trust_bullets.filter(Boolean),
-              prompt_blocks: profileData.prompt_blocks.filter(
-                (b) => b.prompt && b.answer
-              ),
-            }),
-          });
-        } catch {
-          // Profile save failure shouldn't block signup.
-          console.error('Failed to save profile data');
+        const profileRes = await fetch('/api/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: normalizedPhone,
+            display_name: profileData.display_name,
+            business_name: profileData.business_name,
+            headline: profileData.headline,
+            bio: profileData.bio,
+            location: profileData.location,
+            avatar_url: finalAvatarUrl,
+            gallery_urls: finalGalleryUrls,
+            trust_bullets: profileData.trust_bullets.filter(Boolean),
+            prompt_blocks: profileData.prompt_blocks.filter(
+              (b) => b.prompt && b.answer
+            ),
+          }),
+        });
+
+        if (!profileRes.ok) {
+          const profileErr = await profileRes.json().catch(() => ({}));
+          setError(
+            (profileErr as { error?: string }).error ||
+              'Failed to save profile. Please try again.'
+          );
+          return;
         }
       }
 

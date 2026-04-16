@@ -53,6 +53,12 @@ function validateProfile(body: ProfileBody): string | null {
   if (body.gallery_urls && body.gallery_urls.length > 5) {
     return 'Maximum 5 gallery images allowed';
   }
+  if (body.avatar_url && body.avatar_url.startsWith('blob:')) {
+    return 'Invalid avatar URL';
+  }
+  if (body.gallery_urls?.some(url => url.startsWith('blob:'))) {
+    return 'Invalid gallery URL';
+  }
   return null;
 }
 
