@@ -68,6 +68,8 @@ export interface Profile {
   location: string;
   trust_bullets: string[];
   prompt_blocks: PromptBlock[];
+  /** Optional: typical response time in minutes, used for "Responds quickly" badge. */
+  response_time_minutes?: number;
   created_at?: string;
   updated_at?: string;
 }
