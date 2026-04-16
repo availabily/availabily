@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
       headline: profile.headline,
       bio: profile.bio,
       avatar_url: profile.avatar_url,
+      gallery_urls: profile.gallery_urls,
       service_category: profile.service_category,
       location: profile.location,
       trust_bullets: profile.trust_bullets,

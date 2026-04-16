@@ -66,6 +66,19 @@ export async function GET(
     .eq('user_phone', user.phone)
     .order('sort_order', { ascending: true });
 
+  // Fall back to profile_images (gallery type) if profiles.gallery_urls is empty.
+  // This keeps the page working for users whose gallery was stored in the
+  // profile_images table rather than inline on the profile row.
+  const storedGallery: string[] = Array.isArray(profile.gallery_urls)
+    ? profile.gallery_urls
+    : [];
+  const galleryUrls =
+    storedGallery.length > 0
+      ? storedGallery
+      : (images ?? [])
+          .filter((img) => img.image_type === 'gallery')
+          .map((img) => img.url);
+
   return NextResponse.json({
     profile: {
       display_name: profile.display_name,
@@ -73,7 +86,7 @@ export async function GET(
       headline: profile.headline,
       bio: profile.bio,
       avatar_url: profile.avatar_url,
-      gallery_urls: profile.gallery_urls ?? [],
+      gallery_urls: galleryUrls,
       service_category: profile.service_category,
       location: profile.location,
       trust_bullets: profile.trust_bullets ?? [],
