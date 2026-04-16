@@ -22,8 +22,14 @@ export interface ProfileFormData {
   location: string;
   trust_bullets: string[];
   prompt_blocks: PromptBlock[];
+  // Preview URLs shown in the UI while the user is editing the form.
+  // These are local object URLs (blob:) and never get saved to the backend.
   avatar_url: string;
   gallery_urls: string[];
+  // Actual File objects. The signup form uploads these to Supabase Storage
+  // after the user is created, then persists the returned public URLs.
+  avatar_file: File | null;
+  gallery_files: File[];
 }
 
 interface ProfileSetupSectionProps {
@@ -32,12 +38,29 @@ interface ProfileSetupSectionProps {
   className?: string;
 }
 
-export function ProfileSetupSection({ data, onChange, className }: ProfileSetupSectionProps) {
+function revokeIfBlob(url: string) {
+  if (url && url.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(url);
+    } catch {
+      // noop — revoking twice is harmless
+    }
+  }
+}
+
+export function ProfileSetupSection({
+  data,
+  onChange,
+  className,
+}: ProfileSetupSectionProps) {
   const [expanded, setExpanded] = useState(true);
 
-  const update = useCallback((partial: Partial<ProfileFormData>) => {
-    onChange({ ...data, ...partial });
-  }, [data, onChange]);
+  const update = useCallback(
+    (partial: Partial<ProfileFormData>) => {
+      onChange({ ...data, ...partial });
+    },
+    [data, onChange]
+  );
 
   const updateBullet = (index: number, value: string) => {
     const bullets = [...data.trust_bullets];
@@ -45,7 +68,11 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
     update({ trust_bullets: bullets });
   };
 
-  const updatePromptBlock = (index: number, field: 'prompt' | 'answer', value: string) => {
+  const updatePromptBlock = (
+    index: number,
+    field: 'prompt' | 'answer',
+    value: string
+  ) => {
     const blocks = [...data.prompt_blocks];
     blocks[index] = { ...blocks[index], [field]: value };
     update({ prompt_blocks: blocks });
@@ -66,29 +93,52 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
     update({ prompt_blocks: blocks });
   };
 
-  const handleAvatarUpload = useCallback(async (file: File): Promise<string | null> => {
-    const url = await fileToDataUrl(file);
-    update({ avatar_url: url });
-    return url;
-  }, [update]);
+  const handleAvatarUpload = useCallback(
+    async (file: File): Promise<string | null> => {
+      // Release the previous preview URL (if any) before creating a new one.
+      revokeIfBlob(data.avatar_url);
+      const previewUrl = URL.createObjectURL(file);
+      update({ avatar_url: previewUrl, avatar_file: file });
+      return previewUrl;
+    },
+    [data.avatar_url, update]
+  );
 
-  const handleGalleryUpload = useCallback(async (file: File): Promise<string | null> => {
-    const url = await fileToDataUrl(file);
-    update({ gallery_urls: [...data.gallery_urls, url] });
-    return url;
-  }, [data.gallery_urls, update]);
+  const handleGalleryUpload = useCallback(
+    async (file: File): Promise<string | null> => {
+      const previewUrl = URL.createObjectURL(file);
+      update({
+        gallery_urls: [...data.gallery_urls, previewUrl],
+        gallery_files: [...data.gallery_files, file],
+      });
+      return previewUrl;
+    },
+    [data.gallery_urls, data.gallery_files, update]
+  );
 
-  const handleGalleryRemove = useCallback((index: number) => {
-    const urls = data.gallery_urls.filter((_, i) => i !== index);
-    update({ gallery_urls: urls });
-  }, [data.gallery_urls, update]);
+  const handleGalleryRemove = useCallback(
+    (index: number) => {
+      revokeIfBlob(data.gallery_urls[index]);
+      update({
+        gallery_urls: data.gallery_urls.filter((_, i) => i !== index),
+        gallery_files: data.gallery_files.filter((_, i) => i !== index),
+      });
+    },
+    [data.gallery_urls, data.gallery_files, update]
+  );
 
   const handleAvatarRemove = useCallback(() => {
-    update({ avatar_url: '' });
-  }, [update]);
+    revokeIfBlob(data.avatar_url);
+    update({ avatar_url: '', avatar_file: null });
+  }, [data.avatar_url, update]);
 
   return (
-    <div className={cn('border-2 border-slate-100 rounded-2xl overflow-hidden', className)}>
+    <div
+      className={cn(
+        'border-2 border-slate-100 rounded-2xl overflow-hidden',
+        className
+      )}
+    >
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -96,16 +146,25 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
       >
         <div>
           <h3 className="text-base font-bold text-slate-900">Make it yours</h3>
-          <p className="text-sm text-slate-500 mt-0.5">Help customers feel confident booking with you</p>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Help customers feel confident booking with you
+          </p>
         </div>
         <svg
-          className={cn('w-5 h-5 text-slate-400 transition-transform duration-200', expanded && 'rotate-180')}
+          className={cn(
+            'w-5 h-5 text-slate-400 transition-transform duration-200',
+            expanded && 'rotate-180'
+          )}
           fill="none"
           viewBox="0 0 24 24"
           strokeWidth={2}
           stroke="currentColor"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+          />
         </svg>
       </button>
 
@@ -172,7 +231,9 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
               rows={3}
               className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm"
             />
-            <p className="text-xs text-slate-400 text-right">{data.bio.length}/300</p>
+            <p className="text-xs text-slate-400 text-right">
+              {data.bio.length}/300
+            </p>
           </div>
 
           {/* Location */}
@@ -186,15 +247,27 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
 
           {/* Trust bullets */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-slate-700">Trust bullets (up to 3)</label>
-            <p className="text-xs text-slate-400 -mt-1">Short highlights that build confidence</p>
+            <label className="text-sm font-medium text-slate-700">
+              Trust bullets (up to 3)
+            </label>
+            <p className="text-xs text-slate-400 -mt-1">
+              Short highlights that build confidence
+            </p>
             {[0, 1, 2].map((idx) => (
               <input
                 key={idx}
                 type="text"
-                placeholder={['e.g., 5-star rated', 'e.g., Licensed & insured', 'e.g., 500+ clients served'][idx]}
+                placeholder={
+                  [
+                    'e.g., 5-star rated',
+                    'e.g., Licensed & insured',
+                    'e.g., 500+ clients served',
+                  ][idx]
+                }
                 value={data.trust_bullets[idx] || ''}
-                onChange={(e) => updateBullet(idx, e.target.value.slice(0, 50))}
+                onChange={(e) =>
+                  updateBullet(idx, e.target.value.slice(0, 50))
+                }
                 maxLength={50}
                 className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
@@ -203,13 +276,23 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
 
           {/* Prompt blocks */}
           <div className="flex flex-col gap-3">
-            <label className="text-sm font-medium text-slate-700">Prompt cards</label>
-            <p className="text-xs text-slate-400 -mt-2">Add up to 3 questions and answers to give customers a feel for what you offer</p>
+            <label className="text-sm font-medium text-slate-700">
+              Prompt cards
+            </label>
+            <p className="text-xs text-slate-400 -mt-2">
+              Add up to 3 questions and answers to give customers a feel for
+              what you offer
+            </p>
 
             {data.prompt_blocks.map((block, idx) => (
-              <div key={block.id} className="border border-slate-200 rounded-xl p-4 space-y-3">
+              <div
+                key={block.id}
+                className="border border-slate-200 rounded-xl p-4 space-y-3"
+              >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-slate-400">Prompt {idx + 1}</span>
+                  <span className="text-xs font-medium text-slate-400">
+                    Prompt {idx + 1}
+                  </span>
                   <button
                     type="button"
                     onClick={() => removePromptBlock(idx)}
@@ -221,7 +304,11 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-slate-500">Question</label>
                   <select
-                    value={PROMPT_SUGGESTIONS.includes(block.prompt) ? block.prompt : '__custom__'}
+                    value={
+                      PROMPT_SUGGESTIONS.includes(block.prompt)
+                        ? block.prompt
+                        : '__custom__'
+                    }
                     onChange={(e) => {
                       const val = e.target.value;
                       if (val === '__custom__') {
@@ -232,8 +319,10 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
                     }}
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    {PROMPT_SUGGESTIONS.map(s => (
-                      <option key={s} value={s}>{s}</option>
+                    {PROMPT_SUGGESTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
                     ))}
                     <option value="__custom__">Write your own…</option>
                   </select>
@@ -242,7 +331,9 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
                       type="text"
                       placeholder="Your custom question"
                       value={block.prompt}
-                      onChange={(e) => updatePromptBlock(idx, 'prompt', e.target.value)}
+                      onChange={(e) =>
+                        updatePromptBlock(idx, 'prompt', e.target.value)
+                      }
                       className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-1"
                     />
                   )}
@@ -252,12 +343,20 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
                   <textarea
                     placeholder="Your answer..."
                     value={block.answer}
-                    onChange={(e) => updatePromptBlock(idx, 'answer', e.target.value.slice(0, 500))}
+                    onChange={(e) =>
+                      updatePromptBlock(
+                        idx,
+                        'answer',
+                        e.target.value.slice(0, 500)
+                      )
+                    }
                     maxLength={500}
                     rows={2}
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                   />
-                  <p className="text-xs text-slate-400 text-right">{block.answer.length}/500</p>
+                  <p className="text-xs text-slate-400 text-right">
+                    {block.answer.length}/500
+                  </p>
                 </div>
               </div>
             ))}
@@ -276,35 +375,4 @@ export function ProfileSetupSection({ data, onChange, className }: ProfileSetupS
       )}
     </div>
   );
-}
-
-const MAX_IMAGE_WIDTH = 1200;
-
-// Client-side file → data URL (for preview and demo mode)
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d')!;
-    const img = new Image();
-    const reader = new FileReader();
-
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.onload = () => {
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.onload = () => {
-        // Resize to max width, preserving aspect ratio
-        let { width, height } = img;
-        if (width > MAX_IMAGE_WIDTH) {
-          height = (height * MAX_IMAGE_WIDTH) / width;
-          width = MAX_IMAGE_WIDTH;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-  });
 }
