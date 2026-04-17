@@ -12,7 +12,10 @@ function SuccessContent() {
   const handle = searchParams.get('handle') || '';
   const shareableUrl = `${rawBase}/${handle}`;
   const displayUrl = `${DISPLAY_DOMAIN}/${handle}`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareableUrl)}&margin=10&color=5b4cff&bgcolor=ffffff`;
+  const qrDownloadUrl = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(shareableUrl)}&margin=20&color=5b4cff&bgcolor=ffffff`;
   const [copied, setCopied] = useState(false);
+  const [qrLoaded, setQrLoaded] = useState(false);
 
   const copyLink = async () => {
     try {
@@ -57,6 +60,39 @@ function SuccessContent() {
           >
             {copied ? '✓ Copied!' : '📋 Copy link'}
           </button>
+
+          <div className="border-t border-slate-100 pt-6">
+            <p className="text-sm font-semibold text-slate-600 mb-4">Or scan to open your page</p>
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative w-[200px] h-[200px] rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-50">
+                {!qrLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+                  </div>
+                )}
+                <img
+                  src={qrCodeUrl}
+                  alt={`QR code for ${displayUrl}`}
+                  width={200}
+                  height={200}
+                  className={`w-full h-full transition-opacity duration-300 ${qrLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  onLoad={() => setQrLoaded(true)}
+                />
+              </div>
+              <a
+                href={qrDownloadUrl}
+                download={`qr-${handle}.png`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors inline-flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download QR code
+              </a>
+            </div>
+          </div>
 
           <Link
             href={`/${handle}`}
