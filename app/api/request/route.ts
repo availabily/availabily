@@ -3,7 +3,8 @@ import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
 import { sendSMS } from '@/lib/twilio';
 import { isSlotAvailable } from '@/lib/scheduling';
-import { isValidE164, toE164, formatPhone, formatTime, formatShortDay } from '@/lib/utils';
+import { isValidE164, toE164, formatPhone, formatTime, formatShortDay, computeEndsAt } from '@/lib/utils';
+import { generateToken } from '@/lib/tokens';
 import { nanoid } from 'nanoid';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
@@ -71,6 +72,10 @@ export async function POST(request: NextRequest) {
     const [h, m] = start_time.split(':').map(Number);
     const end_time = `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     const confirm_token = nanoid(12);
+    const quote_token = generateToken();
+    const accept_token = generateToken();
+    const manage_token = generateToken();
+    const ends_at = computeEndsAt(date, end_time, user.timezone);
     const now = new Date().toISOString();
 
     demoStore.createMeeting({
@@ -85,6 +90,22 @@ export async function POST(request: NextRequest) {
       status: 'pending',
       confirm_token,
       created_at: now,
+      quote_amount_cents: null,
+      quote_currency: 'usd',
+      quote_description: '',
+      quote_token,
+      accept_token,
+      manage_token,
+      quoted_at: null,
+      customer_confirmed_at: null,
+      cancelled_at: null,
+      cancellation_reason: null,
+      stripe_invoice_id: null,
+      stripe_payment_intent_id: null,
+      stripe_hosted_invoice_url: null,
+      invoice_sent_at: null,
+      paid_at: null,
+      ends_at,
     });
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
@@ -158,8 +179,12 @@ export async function POST(request: NextRequest) {
   const endH = h + 1;
   const end_time = `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 
-  // Generate confirm token
+  // Generate tokens
   const confirm_token = nanoid(12);
+  const quote_token = generateToken();
+  const accept_token = generateToken();
+  const manage_token = generateToken();
+  const ends_at = computeEndsAt(date, end_time, user.timezone);
 
   // Insert meeting
   const { error: insertError } = await supabase
@@ -174,6 +199,10 @@ export async function POST(request: NextRequest) {
       note: visitor_address,
       status: 'pending',
       confirm_token,
+      quote_token,
+      accept_token,
+      manage_token,
+      ends_at,
     });
 
   if (insertError) {

@@ -125,3 +125,37 @@ export function getCurrentDateInTz(timezone: string): string {
     day: '2-digit',
   }).format(now);
 }
+
+/**
+ * Return the UTC offset in milliseconds for a given Date in a given IANA timezone.
+ * Parses the "GMT±HH:MM" string from Intl.DateTimeFormat longOffset.
+ */
+function getTzOffsetMs(date: Date, tz: string): number {
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone: tz,
+    timeZoneName: 'longOffset',
+  }).formatToParts(date);
+  const offsetPart = parts.find(p => p.type === 'timeZoneName')?.value ?? 'GMT+0';
+  // offsetPart looks like "GMT+5:30", "GMT-7", or "GMT"
+  const match = offsetPart.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+  if (!match) return 0;
+  const sign = match[1] === '+' ? 1 : -1;
+  const hours = parseInt(match[2], 10);
+  const minutes = parseInt(match[3] ?? '0', 10);
+  return sign * (hours * 60 + minutes) * 60 * 1000;
+}
+
+/**
+ * Compute the UTC ISO string for a meeting's end moment given local date, time, and IANA timezone.
+ *
+ * Example:
+ *   computeEndsAt('2026-04-20', '17:00', 'America/Los_Angeles')
+ *     → '2026-04-21T00:00:00.000Z'  (PDT = UTC-7)
+ */
+export function computeEndsAt(dateStr: string, endTime: string, timezone: string): string {
+  const localStr = `${dateStr}T${endTime}:00`;
+  // Treat the wall-clock time as UTC provisionally to get a Date object in range
+  const asUtc = new Date(localStr + 'Z');
+  const tzOffsetMs = getTzOffsetMs(asUtc, timezone);
+  return new Date(asUtc.getTime() - tzOffsetMs).toISOString();
+}

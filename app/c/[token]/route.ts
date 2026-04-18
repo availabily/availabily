@@ -22,7 +22,7 @@ export async function GET(
     }
     if (meeting.status !== 'pending') {
       const messages: Record<string, string> = {
-        accepted: 'This meeting has already been confirmed.',
+        confirmed: 'This meeting has already been confirmed.',
         declined: 'This meeting has already been declined.',
         expired: 'This meeting request has expired.',
       };
@@ -40,7 +40,7 @@ export async function GET(
         { status: 200, headers: { 'Content-Type': 'text/html' } }
       );
     }
-    demoStore.updateMeeting(meeting.id, { status: 'accepted' });
+    demoStore.updateMeeting(meeting.id, { status: 'confirmed' });
     const dayName = formatFullDay(meeting.meeting_date);
     const time = formatTime(meeting.start_time);
     const smsBody = `Confirmed for ${dayName} at ${time}`;
@@ -67,7 +67,7 @@ export async function GET(
   // Check if already handled
   if (meeting.status !== 'pending') {
     const messages: Record<string, string> = {
-      accepted: 'This meeting has already been confirmed.',
+      confirmed: 'This meeting has already been confirmed.',
       declined: 'This meeting has already been declined.',
       expired: 'This meeting request has expired.',
     };
@@ -94,10 +94,10 @@ export async function GET(
     );
   }
 
-  // Accept the meeting
+  // Confirm the meeting (pending → confirmed)
   const { error: updateError } = await supabase
     .from('meetings')
-    .update({ status: 'accepted' })
+    .update({ status: 'confirmed' })
     .eq('id', meeting.id);
 
   if (updateError) {

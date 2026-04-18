@@ -113,9 +113,9 @@ export function computeSlotsForDate(
     );
   });
 
-  // Step 4: Remove slots that overlap any accepted meeting on that date
+  // Step 4: Remove slots that overlap any confirmed meeting on that date
   const acceptedMeetings = meetings.filter(m =>
-    m.meeting_date === dateStr && m.status === 'accepted'
+    m.meeting_date === dateStr && m.status === 'confirmed'
   );
   slots = slots.filter(slot => {
     return !acceptedMeetings.some(meeting =>

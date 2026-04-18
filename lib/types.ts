@@ -26,9 +26,47 @@ export interface Meeting {
   visitor_name: string;
   visitor_phone: string;
   note: string | null; // stores visitor_address for backward compatibility
-  status: 'pending' | 'accepted' | 'declined' | 'expired';
+  status:
+    | 'pending'
+    | 'quoted'
+    | 'confirmed'
+    | 'cancelled'
+    | 'completed'
+    | 'invoiced'
+    | 'paid'
+    | 'expired'
+    | 'declined';
   confirm_token: string;
   created_at: string;
+
+  // Quote & payment fields (all nullable until populated)
+  quote_amount_cents: number | null;
+  quote_currency: string;
+  quote_description: string;
+  quote_token: string | null;
+  accept_token: string | null;
+  manage_token: string | null;
+  quoted_at: string | null;
+  customer_confirmed_at: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+  stripe_invoice_id: string | null;
+  stripe_payment_intent_id: string | null;
+  stripe_hosted_invoice_url: string | null;
+  invoice_sent_at: string | null;
+  paid_at: string | null;
+  ends_at: string | null;
+}
+
+export interface StripeAccount {
+  user_phone: string;
+  stripe_account_id: string;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  details_submitted: boolean;
+  onboarding_started_at: string;
+  onboarding_completed_at: string | null;
+  updated_at: string;
 }
 
 export interface TimeSlot {

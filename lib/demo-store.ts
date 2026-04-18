@@ -4,7 +4,7 @@
  * Data persists for the lifetime of the dev server process.
  */
 
-import { User, TimeRule, Meeting, Profile, ProfileImage } from './types';
+import { User, TimeRule, Meeting, Profile, ProfileImage, StripeAccount } from './types';
 
 const DEMO_PHONE = '+10000000000';
 export const DEMO_HANDLE = 'demo';
@@ -57,6 +57,24 @@ const profiles: Profile[] = [
 ];
 
 const profileImages: ProfileImage[] = [];
+
+// ── Stripe accounts ──
+
+const stripeAccounts: Map<string, StripeAccount> = new Map([
+  [
+    DEMO_PHONE,
+    {
+      user_phone: DEMO_PHONE,
+      stripe_account_id: 'acct_demo_10000000000',
+      charges_enabled: true,
+      payouts_enabled: true,
+      details_submitted: true,
+      onboarding_started_at: new Date().toISOString(),
+      onboarding_completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  ],
+]);
 
 export const demoStore = {
   getUserByHandle(handle: string): User | null {
@@ -167,5 +185,15 @@ export const demoStore = {
       const img = profileImages.find(i => i.id === id && i.user_phone === userPhone);
       if (img) img.sort_order = index;
     });
+  },
+
+  // ── Stripe account methods ──
+
+  getStripeAccount(userPhone: string): StripeAccount | null {
+    return stripeAccounts.get(userPhone) ?? null;
+  },
+
+  upsertStripeAccount(account: StripeAccount): void {
+    stripeAccounts.set(account.user_phone, { ...account, updated_at: new Date().toISOString() });
   },
 };
