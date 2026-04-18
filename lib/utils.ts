@@ -147,6 +147,18 @@ export function getCurrentDateInTz(timezone: string): string {
 }
 
 /**
+ * Format cents to a plain dollar string for SMS — no $ sign, no trailing .00.
+ * e.g. 15000 → "150", 123450 → "1,234.50"
+ */
+export function formatDollars(cents: number): string {
+  const wholeDollars = Math.floor(cents / 100);
+  const remainingCents = cents % 100;
+  const formatted = wholeDollars.toLocaleString('en-US');
+  if (remainingCents === 0) return formatted;
+  return `${formatted}.${String(remainingCents).padStart(2, '0')}`;
+}
+
+/**
  * Return the UTC offset in milliseconds for a given Date in a given IANA timezone.
  * Parses the "GMT±HH:MM" string from Intl.DateTimeFormat longOffset.
  */

@@ -130,3 +130,68 @@ availabily/
 ## Database Schema
 
 3 tables: `users`, `time_rules`, `meetings`. See `supabase/schema.sql` for full schema.
+
+---
+
+## Payments
+
+This app uses Stripe Connect (Express accounts) to accept payments on behalf of business owners, with an application fee that routes to the platform.
+
+### Setup
+
+1. Create a Stripe account and enable Connect at https://dashboard.stripe.com/settings/connect
+2. Grab test-mode API keys and set:
+   ```
+   STRIPE_SECRET_KEY=sk_test_...
+   STRIPE_PUBLISHABLE_KEY=pk_test_...
+   STRIPE_APPLICATION_FEE_PERCENT=5
+   ```
+3. Set up the webhook at https://dashboard.stripe.com/test/webhooks
+   - Endpoint URL: `https://yourdomain.com/api/stripe/webhook`
+   - Events to listen to:
+     - `account.updated`
+     - `invoice.paid`
+     - `invoice.payment_failed`
+     - `invoice.finalization_failed`
+   - Listen to: **Events on Connected accounts**
+   - Copy the signing secret → `STRIPE_WEBHOOK_SECRET`
+4. Set `CRON_SECRET` to any long random string. Vercel will use this for the automated cron job.
+
+### Local webhook testing
+
+Install the [Stripe CLI](https://stripe.com/docs/stripe-cli) and run:
+
+```bash
+stripe listen \
+  --forward-to localhost:3000/api/stripe/webhook \
+  --forward-connect-to localhost:3000/api/stripe/webhook
+```
+
+The CLI prints a `whsec_...` secret — use that as `STRIPE_WEBHOOK_SECRET` in `.env.local`.
+
+> **Keep `stripe listen` running the entire time you're testing locally.** If you restart it, you may get a new secret — update `.env.local` accordingly.
+
+### Manually triggering the cron
+
+```bash
+curl -X GET http://localhost:3000/api/cron/generate-invoices \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+The cron runs automatically every 15 minutes on Vercel (configured in `vercel.json`).
+
+### Application fee
+
+Set `STRIPE_APPLICATION_FEE_PERCENT` (e.g., `"5"` = 5%). The platform keeps this percentage of every paid invoice; the rest routes to the owner's connected account.
+
+### Demo mode payment flow
+
+With `NEXT_PUBLIC_DEMO_MODE=true`, the full payment flow is simulated without real Stripe calls:
+
+1. Book an appointment via `/demo`
+2. Owner sends quote via `/q/[token]`
+3. Customer accepts via the accept link
+4. Set `ends_at` to the past (via temp debug endpoint or `demo-store.ts`)
+5. Hit the cron: `curl -H "Authorization: Bearer test" http://localhost:3000/api/cron/generate-invoices`
+6. Visit `/demo/invoice/[id]` to see the personalized invoice
+7. Click **Pay** to simulate payment success (or the failure button for the failure path)

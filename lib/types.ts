@@ -55,6 +55,8 @@ export interface Meeting {
   invoice_sent_at: string | null;
   paid_at: string | null;
   ends_at: string | null;
+  payment_failure_notified_at: string | null;
+  reminder_sent_at: string | null;
 }
 
 export interface StripeAccount {

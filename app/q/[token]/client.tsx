@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Meeting } from '@/lib/types';
+import { Meeting, Profile } from '@/lib/types';
+import { isProfileCompleteForQuoting } from '@/lib/profile';
 import {
   formatPhone,
   formatDateDisplay,
@@ -11,8 +12,31 @@ import {
 } from '@/lib/utils';
 import { cn } from '@/lib/cn';
 
+interface StripeStatus {
+  exists: boolean;
+  charges_enabled: boolean;
+  details_submitted: boolean;
+  payouts_enabled: boolean;
+}
+
 interface QuotePageClientProps {
   meeting: Meeting;
+  ownerProfile: Profile | null;
+  stripeStatus: StripeStatus | null;
+}
+
+type GateStep = 'profile' | 'connect' | 'verifying' | 'ready';
+
+function computeGateStep(
+  profile: Profile | null,
+  stripe: StripeStatus | null
+): GateStep {
+  if (!isProfileCompleteForQuoting(profile)) return 'profile';
+  if (!stripe?.charges_enabled) {
+    if (stripe?.details_submitted) return 'verifying';
+    return 'connect';
+  }
+  return 'ready';
 }
 
 function BrandMark() {
@@ -54,10 +78,240 @@ function statusBadge(status: Meeting['status']) {
   return map[status] ?? status;
 }
 
-export function QuotePageClient({ meeting: initialMeeting }: QuotePageClientProps) {
-  const [meeting, setMeeting] = useState<Meeting>(initialMeeting);
+function ProfileGate({
+  ownerProfile,
+  ownerPhone,
+  onComplete,
+}: {
+  ownerProfile: Profile | null;
+  ownerPhone: string;
+  onComplete: (updated: Profile) => void;
+}) {
+  const [displayName, setDisplayName] = useState(ownerProfile?.display_name ?? '');
+  const [businessName, setBusinessName] = useState(ownerProfile?.business_name ?? '');
+  const [location, setLocation] = useState(ownerProfile?.location ?? '');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  // Quote form state
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!displayName.trim() && !businessName.trim()) {
+      setError('Enter at least a display name or business name.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const merged: Profile = {
+        ...(ownerProfile ?? {
+          user_phone: ownerPhone,
+          display_name: '',
+          business_name: '',
+          headline: '',
+          bio: '',
+          avatar_url: '',
+          gallery_urls: [],
+          service_category: '',
+          location: '',
+          trust_bullets: [],
+          prompt_blocks: [],
+        }),
+        user_phone: ownerPhone,
+        display_name: displayName.trim(),
+        business_name: businessName.trim(),
+        location: location.trim(),
+      };
+      const res = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: ownerPhone,
+          display_name: merged.display_name,
+          business_name: merged.business_name,
+          headline: merged.headline,
+          bio: merged.bio,
+          avatar_url: merged.avatar_url,
+          gallery_urls: merged.gallery_urls,
+          service_category: merged.service_category,
+          location: merged.location,
+          trust_bullets: merged.trust_bullets,
+          prompt_blocks: merged.prompt_blocks,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to save. Please try again.');
+        return;
+      }
+      onComplete(merged);
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6">
+      <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.14em] mb-1">
+        Quick setup — one time
+      </p>
+      <h2 className="font-display text-2xl font-bold text-slate-900 mb-2">
+        What should your customer see?
+      </h2>
+      <p className="text-sm text-slate-500 mb-5">
+        Customers and invoices will show this name. You can edit it later.
+      </p>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="gate-business" className="text-sm font-medium text-slate-700">
+            Business name
+          </label>
+          <input
+            id="gate-business"
+            type="text"
+            placeholder="Jake's Mobile Detail"
+            value={businessName}
+            onChange={e => setBusinessName(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="gate-display" className="text-sm font-medium text-slate-700">
+            Your name
+          </label>
+          <input
+            id="gate-display"
+            type="text"
+            placeholder="Jake Martinez"
+            value={displayName}
+            onChange={e => setDisplayName(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="gate-location" className="text-sm font-medium text-slate-700">
+            Location <span className="font-normal text-slate-400">(optional)</span>
+          </label>
+          <input
+            id="gate-location"
+            type="text"
+            placeholder="Lahaina, HI"
+            value={location}
+            onChange={e => setLocation(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm"
+          />
+        </div>
+        {error && (
+          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+            {error}
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={loading}
+          className={cn(
+            'w-full rounded-2xl bg-brand-600 text-white font-semibold text-base px-6 py-3.5',
+            'transition-all duration-200 hover:bg-brand-700 active:scale-[0.98]',
+            'shadow-[0_10px_24px_-8px_rgba(91,76,255,0.45)]',
+            'focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+            'inline-flex items-center justify-center gap-2',
+          )}
+        >
+          {loading ? <><Spinner /> Saving…</> : 'Save and continue →'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function ConnectGate({ ownerPhone }: { ownerPhone: string }) {
+  const encodedPhone = encodeURIComponent(ownerPhone);
+  return (
+    <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6">
+      <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.14em] mb-1">
+        Quick setup — one time
+      </p>
+      <h2 className="font-display text-2xl font-bold text-slate-900 mb-2">
+        Set up payments to send this quote
+      </h2>
+      <p className="text-sm text-slate-500 mb-3">
+        We use Stripe to handle payments securely. Takes about 3 minutes and you only do this once. You&apos;ll return here automatically.
+      </p>
+      <p className="text-xs text-slate-400 mb-5">
+        Stripe is the payment processor behind Shopify, Substack, and Lyft.
+      </p>
+      <a
+        href={`/api/connect/start?phone=${encodedPhone}`}
+        className={cn(
+          'w-full rounded-2xl bg-brand-600 text-white font-semibold text-base px-6 py-3.5',
+          'transition-all duration-200 hover:bg-brand-700 active:scale-[0.98]',
+          'shadow-[0_10px_24px_-8px_rgba(91,76,255,0.45)]',
+          'inline-flex items-center justify-center',
+        )}
+      >
+        Set up payments →
+      </a>
+    </div>
+  );
+}
+
+function VerifyingGate({
+  ownerPhone,
+  onReady,
+}: {
+  ownerPhone: string;
+  onReady: () => void;
+}) {
+  const [checking, setChecking] = useState(false);
+
+  async function checkNow() {
+    setChecking(true);
+    try {
+      const res = await fetch(`/api/connect/status?phone=${encodeURIComponent(ownerPhone)}`);
+      const data = await res.json();
+      if (data?.charges_enabled) onReady();
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6">
+      <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.14em] mb-1">
+        Almost there
+      </p>
+      <h2 className="font-display text-2xl font-bold text-slate-900 mb-3">
+        Stripe is verifying your info
+      </h2>
+      <p className="text-sm text-slate-500 mb-5">
+        This usually takes a few minutes. Refresh this page to check.
+      </p>
+      <button
+        onClick={checkNow}
+        disabled={checking}
+        className={cn(
+          'w-full rounded-2xl border border-slate-200 bg-white text-slate-700 font-semibold text-base px-6 py-3.5',
+          'transition-all duration-200 hover:bg-slate-50 active:scale-[0.98]',
+          'focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2',
+          'disabled:opacity-50 disabled:cursor-not-allowed',
+          'inline-flex items-center justify-center gap-2',
+        )}
+      >
+        {checking ? <><Spinner /> Checking…</> : 'Check status'}
+      </button>
+    </div>
+  );
+}
+
+function QuoteForm({
+  meeting,
+  onQuoted,
+}: {
+  meeting: Meeting;
+  onQuoted: (amountCents: number, description: string) => void;
+}) {
   const [amountInput, setAmountInput] = useState('');
   const [amountCents, setAmountCents] = useState(0);
   const [description, setDescription] = useState('');
@@ -65,7 +319,6 @@ export function QuotePageClient({ meeting: initialMeeting }: QuotePageClientProp
   const [error, setError] = useState('');
 
   const firstName = meeting.visitor_name.split(' ')[0];
-  const manageHref = meeting.manage_token ? `/manage/${meeting.manage_token}` : '#';
 
   function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
     let val = e.target.value.replace(/[^0-9.]/g, '');
@@ -83,7 +336,7 @@ export function QuotePageClient({ meeting: initialMeeting }: QuotePageClientProp
     return decPart !== undefined ? formatted + '.' + decPart : formatted;
   }
 
-  async function handleQuoteSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (amountCents < 100) return;
     setLoading(true);
@@ -103,13 +356,7 @@ export function QuotePageClient({ meeting: initialMeeting }: QuotePageClientProp
         setError(data.error || 'Something went wrong. Please try again.');
         return;
       }
-      setMeeting(prev => ({
-        ...prev,
-        status: 'quoted',
-        quote_amount_cents: amountCents,
-        quote_description: description.trim(),
-        quoted_at: new Date().toISOString(),
-      }));
+      onQuoted(amountCents, description.trim());
     } catch {
       setError('Network error. Please try again.');
     } finally {
@@ -118,12 +365,138 @@ export function QuotePageClient({ meeting: initialMeeting }: QuotePageClientProp
   }
 
   return (
+    <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6">
+      <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.14em] mb-1">
+        Send quote
+      </p>
+      <h2 className="font-display text-2xl font-bold text-slate-900 mb-5">
+        How much do you charge?
+      </h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="quote-amount" className="text-sm font-medium text-slate-700">
+            Amount
+          </label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold select-none">
+              $
+            </span>
+            <input
+              id="quote-amount"
+              type="tel"
+              inputMode="decimal"
+              placeholder="0"
+              value={formatInputDisplay(amountInput)}
+              onChange={handleAmountChange}
+              className={cn(
+                'w-full rounded-xl border border-slate-200 bg-white pl-8 pr-4 py-3',
+                'text-slate-900 text-lg font-semibold placeholder-slate-300',
+                'transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent',
+              )}
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="quote-desc" className="text-sm font-medium text-slate-700">
+            Description <span className="font-normal text-slate-400">(optional)</span>
+          </label>
+          <textarea
+            id="quote-desc"
+            placeholder="What's included? (e.g. Full detail — interior + exterior)"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            maxLength={200}
+            rows={3}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none text-sm"
+          />
+          {description.length > 160 && (
+            <p className="text-xs text-slate-400 text-right">
+              {200 - description.length} chars left
+            </p>
+          )}
+        </div>
+        {error && (
+          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+            {error}
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={loading || amountCents < 100}
+          className={cn(
+            'w-full rounded-2xl bg-brand-600 text-white font-semibold text-base px-6 py-3.5',
+            'transition-all duration-200 hover:bg-brand-700 active:scale-[0.98]',
+            'shadow-[0_10px_24px_-8px_rgba(91,76,255,0.45)]',
+            'focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+            'inline-flex items-center justify-center gap-2',
+          )}
+        >
+          {loading ? <><Spinner /> Sending…</> : `Send quote to ${firstName} →`}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export function QuotePageClient({
+  meeting: initialMeeting,
+  ownerProfile: initialProfile,
+  stripeStatus: initialStripe,
+}: QuotePageClientProps) {
+  const [meeting, setMeeting] = useState<Meeting>(initialMeeting);
+  const [profile, setProfile] = useState<Profile | null>(initialProfile);
+  const [stripe, setStripe] = useState<StripeStatus | null>(initialStripe);
+  const [gateStep, setGateStep] = useState<GateStep>(
+    () => computeGateStep(initialProfile, initialStripe)
+  );
+
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Poll Stripe status every 10s while verifying
+  useEffect(() => {
+    if (gateStep !== 'verifying') {
+      if (pollRef.current) clearInterval(pollRef.current);
+      return;
+    }
+    const phone = meeting.user_phone;
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/connect/status?phone=${encodeURIComponent(phone)}`);
+        const data: StripeStatus = await res.json();
+        if (data?.charges_enabled) {
+          setStripe(data);
+          setGateStep('ready');
+        }
+      } catch {
+        // ignore poll errors
+      }
+    }, 10000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [gateStep, meeting.user_phone]);
+
+  const firstName = meeting.visitor_name.split(' ')[0];
+  const manageHref = meeting.manage_token ? `/manage/${meeting.manage_token}` : '#';
+
+  function handleProfileComplete(updated: Profile) {
+    setProfile(updated);
+    const nextStep = computeGateStep(updated, stripe);
+    setGateStep(nextStep);
+  }
+
+  function handleStripeReady() {
+    setGateStep('ready');
+  }
+
+  return (
     <main className="min-h-screen bg-gradient-to-br from-white via-brand-50/60 to-brand-100/40">
       <div className="max-w-[480px] mx-auto px-5 py-7 pb-16">
         <BrandMark />
 
         <div className="stagger space-y-4">
-          {/* ── Booking request details card ── */}
+          {/* Booking request details card */}
           <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6">
             <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.14em] mb-1">
               Booking request
@@ -131,7 +504,6 @@ export function QuotePageClient({ meeting: initialMeeting }: QuotePageClientProp
             <h1 className="font-display text-2xl font-bold text-slate-900 mb-4">
               {meeting.visitor_name}
             </h1>
-
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2 text-slate-600">
                 <span className="font-medium text-slate-500 w-16 flex-none">Phone</span>
@@ -152,7 +524,6 @@ export function QuotePageClient({ meeting: initialMeeting }: QuotePageClientProp
                 </span>
               </div>
             </div>
-
             {meeting.note && (
               <div className="mt-4 rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3">
                 <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
@@ -163,95 +534,37 @@ export function QuotePageClient({ meeting: initialMeeting }: QuotePageClientProp
             )}
           </div>
 
-          {/* ── Status-driven second card ── */}
+          {/* ── Gate + status-driven second card ── */}
 
-          {/* pending → quote form */}
-          {meeting.status === 'pending' && (
-            <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6">
-              <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.14em] mb-1">
-                Send quote
-              </p>
-              <h2 className="font-display text-2xl font-bold text-slate-900 mb-5">
-                How much do you charge?
-              </h2>
+          {meeting.status === 'pending' && gateStep === 'profile' && (
+            <ProfileGate
+              ownerProfile={profile}
+              ownerPhone={meeting.user_phone}
+              onComplete={handleProfileComplete}
+            />
+          )}
 
-              <form onSubmit={handleQuoteSubmit} className="space-y-4">
-                {/* Amount input */}
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="quote-amount" className="text-sm font-medium text-slate-700">
-                    Amount
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold select-none">
-                      $
-                    </span>
-                    <input
-                      id="quote-amount"
-                      type="tel"
-                      inputMode="decimal"
-                      placeholder="0"
-                      value={formatInputDisplay(amountInput)}
-                      onChange={handleAmountChange}
-                      className={cn(
-                        'w-full rounded-xl border border-slate-200 bg-white pl-8 pr-4 py-3',
-                        'text-slate-900 text-lg font-semibold placeholder-slate-300',
-                        'transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent',
-                      )}
-                    />
-                  </div>
-                </div>
+          {meeting.status === 'pending' && gateStep === 'connect' && (
+            <ConnectGate ownerPhone={meeting.user_phone} />
+          )}
 
-                {/* Description textarea */}
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="quote-desc" className="text-sm font-medium text-slate-700">
-                    Description{' '}
-                    <span className="font-normal text-slate-400">(optional)</span>
-                  </label>
-                  <textarea
-                    id="quote-desc"
-                    placeholder="What's included? (e.g. Full detail — interior + exterior)"
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    maxLength={200}
-                    rows={3}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none text-sm"
-                  />
-                  {description.length > 160 && (
-                    <p className="text-xs text-slate-400 text-right">
-                      {200 - description.length} chars left
-                    </p>
-                  )}
-                </div>
+          {meeting.status === 'pending' && gateStep === 'verifying' && (
+            <VerifyingGate ownerPhone={meeting.user_phone} onReady={handleStripeReady} />
+          )}
 
-                {error && (
-                  <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
-                    {error}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading || amountCents < 100}
-                  className={cn(
-                    'w-full rounded-2xl bg-brand-600 text-white font-semibold text-base px-6 py-3.5',
-                    'transition-all duration-200 hover:bg-brand-700 active:scale-[0.98]',
-                    'shadow-[0_10px_24px_-8px_rgba(91,76,255,0.45)]',
-                    'focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2',
-                    'disabled:opacity-50 disabled:cursor-not-allowed',
-                    'inline-flex items-center justify-center gap-2',
-                  )}
-                >
-                  {loading ? (
-                    <>
-                      <Spinner />
-                      Sending…
-                    </>
-                  ) : (
-                    `Send quote to ${firstName} →`
-                  )}
-                </button>
-              </form>
-            </div>
+          {meeting.status === 'pending' && gateStep === 'ready' && (
+            <QuoteForm
+              meeting={meeting}
+              onQuoted={(amountCents, description) => {
+                setMeeting(prev => ({
+                  ...prev,
+                  status: 'quoted',
+                  quote_amount_cents: amountCents,
+                  quote_description: description,
+                  quoted_at: new Date().toISOString(),
+                }));
+              }}
+            />
           )}
 
           {/* quoted → quote sent */}
@@ -281,7 +594,7 @@ export function QuotePageClient({ meeting: initialMeeting }: QuotePageClientProp
             </div>
           )}
 
-          {/* confirmed → booking confirmed */}
+          {/* confirmed */}
           {meeting.status === 'confirmed' && (
             <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6">
               <div className="flex items-center gap-3 mb-4">
@@ -314,7 +627,7 @@ export function QuotePageClient({ meeting: initialMeeting }: QuotePageClientProp
             </div>
           )}
 
-          {/* Terminal states: cancelled, declined, expired */}
+          {/* Terminal states */}
           {(meeting.status === 'cancelled' ||
             meeting.status === 'declined' ||
             meeting.status === 'expired') && (

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
-import { getMeetingByQuoteToken } from '@/lib/meeting-lookup';
+import { getMeetingByQuoteToken, getOwnerForMeeting } from '@/lib/meeting-lookup';
+import { getAccountStatus } from '@/lib/stripe-connect';
 import { QuotePageClient } from './client';
 
 export default async function QuotePage({
@@ -11,5 +12,16 @@ export default async function QuotePage({
   const meeting = await getMeetingByQuoteToken(token);
   if (!meeting) notFound();
 
-  return <QuotePageClient meeting={meeting} />;
+  const [{ profile }, stripeStatus] = await Promise.all([
+    getOwnerForMeeting(meeting),
+    getAccountStatus(meeting.user_phone),
+  ]);
+
+  return (
+    <QuotePageClient
+      meeting={meeting}
+      ownerProfile={profile}
+      stripeStatus={stripeStatus}
+    />
+  );
 }

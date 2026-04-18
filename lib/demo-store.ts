@@ -103,6 +103,10 @@ export const demoStore = {
     }
   },
 
+  getAllMeetings(): Meeting[] {
+    return [...meetings];
+  },
+
   getMeetings(userPhone: string, fromDate: string, toDate: string): Meeting[] {
     return meetings.filter(
       m =>
@@ -114,6 +118,10 @@ export const demoStore = {
 
   getMeetingsByDate(userPhone: string, date: string): Meeting[] {
     return meetings.filter(m => m.user_phone === userPhone && m.meeting_date === date);
+  },
+
+  getMeetingById(id: string): Meeting | null {
+    return meetings.find(m => m.id === id) ?? null;
   },
 
   getMeetingByQuoteToken(token: string): Meeting | null {
