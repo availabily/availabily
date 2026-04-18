@@ -116,8 +116,16 @@ export const demoStore = {
     return meetings.filter(m => m.user_phone === userPhone && m.meeting_date === date);
   },
 
-  getMeetingByToken(token: string): Meeting | null {
-    return meetings.find(m => m.confirm_token === token) ?? null;
+  getMeetingByQuoteToken(token: string): Meeting | null {
+    return meetings.find(m => m.quote_token === token) ?? null;
+  },
+
+  getMeetingByAcceptToken(token: string): Meeting | null {
+    return meetings.find(m => m.accept_token === token) ?? null;
+  },
+
+  getMeetingByManageToken(token: string): Meeting | null {
+    return meetings.find(m => m.manage_token === token) ?? null;
   },
 
   createMeeting(meeting: Meeting): void {

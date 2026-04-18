@@ -51,7 +51,8 @@ export function RequestSentState({
         Request sent!
       </h2>
       <p className="text-slate-600 leading-relaxed max-w-[32ch] mx-auto">
-        {who} will confirm your request by text. You&apos;ll hear back shortly.
+        {who} will review and send you a quote by text. You&apos;ll be able to review and accept
+        it before confirming the booking.
       </p>
 
       {hasTime && (

@@ -5,7 +5,6 @@ import { sendSMS } from '@/lib/twilio';
 import { isSlotAvailable } from '@/lib/scheduling';
 import { isValidE164, toE164, formatPhone, formatTime, formatShortDay, computeEndsAt } from '@/lib/utils';
 import { generateToken } from '@/lib/tokens';
-import { nanoid } from 'nanoid';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
@@ -71,7 +70,6 @@ export async function POST(request: NextRequest) {
 
     const [h, m] = start_time.split(':').map(Number);
     const end_time = `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    const confirm_token = nanoid(12);
     const quote_token = generateToken();
     const accept_token = generateToken();
     const manage_token = generateToken();
@@ -88,7 +86,6 @@ export async function POST(request: NextRequest) {
       visitor_phone,
       note: visitor_address,
       status: 'pending',
-      confirm_token,
       created_at: now,
       quote_amount_cents: null,
       quote_currency: 'usd',
@@ -110,11 +107,11 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
     const smsBody = [
-      'New time request',
+      'New booking request',
       `${formatShortDay(date)} ${formatTime(start_time)}`,
       `${visitor_name} – ${formatPhone(visitor_phone)}`,
-      `Address: ${visitor_address}`,
-      `Confirm: ${baseUrl}/c/${confirm_token}`,
+      visitor_address,
+      `Send quote: ${baseUrl}/q/${quote_token}`,
     ].filter(Boolean).join('\n');
     await sendSMS(user.phone, smsBody);
     return NextResponse.json({ success: true });
@@ -180,7 +177,6 @@ export async function POST(request: NextRequest) {
   const end_time = `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 
   // Generate tokens
-  const confirm_token = nanoid(12);
   const quote_token = generateToken();
   const accept_token = generateToken();
   const manage_token = generateToken();
@@ -198,7 +194,6 @@ export async function POST(request: NextRequest) {
       visitor_phone,
       note: visitor_address,
       status: 'pending',
-      confirm_token,
       quote_token,
       accept_token,
       manage_token,
@@ -212,11 +207,11 @@ export async function POST(request: NextRequest) {
   // Send SMS to owner
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
   const smsBody = [
-    'New time request',
+    'New booking request',
     `${formatShortDay(date)} ${formatTime(start_time)}`,
     `${visitor_name} – ${formatPhone(visitor_phone)}`,
-    `Address: ${visitor_address}`,
-    `Confirm: ${baseUrl}/c/${confirm_token}`,
+    visitor_address,
+    `Send quote: ${baseUrl}/q/${quote_token}`,
   ].filter(Boolean).join('\n');
 
   try {

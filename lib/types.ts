@@ -36,7 +36,6 @@ export interface Meeting {
     | 'paid'
     | 'expired'
     | 'declined';
-  confirm_token: string;
   created_at: string;
 
   // Quote & payment fields (all nullable until populated)

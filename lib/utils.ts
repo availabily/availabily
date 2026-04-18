@@ -114,6 +114,26 @@ export function getCurrentTimeInTz(timezone: string): string {
 }
 
 /**
+ * Format cents to a dollar string — no trailing .00 for whole dollars.
+ * e.g. 150000 → "$1,500", 123450 → "$1,234.50"
+ */
+export function formatAmountCents(cents: number): string {
+  const wholeDollars = Math.floor(cents / 100);
+  const remainingCents = cents % 100;
+  const formatted = wholeDollars.toLocaleString('en-US');
+  if (remainingCents === 0) return `$${formatted}`;
+  return `$${formatted}.${String(remainingCents).padStart(2, '0')}`;
+}
+
+/**
+ * Format a date string "YYYY-MM-DD" to a short label e.g. "Mon, Apr 20"
+ */
+export function formatShortDate(dateStr: string): string {
+  const date = new Date(dateStr + 'T00:00:00');
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+/**
  * Get the current date as "YYYY-MM-DD" in a given timezone
  */
 export function getCurrentDateInTz(timezone: string): string {
