@@ -132,6 +132,10 @@ export const demoStore = {
     return meetings.find(m => m.accept_token === token) ?? null;
   },
 
+  getMeetingByConfirmToken(token: string): Meeting | null {
+    return meetings.find(m => m.confirm_token === token) ?? null;
+  },
+
   getMeetingByManageToken(token: string): Meeting | null {
     return meetings.find(m => m.manage_token === token) ?? null;
   },

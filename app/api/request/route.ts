@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
 
     const [h, m] = start_time.split(':').map(Number);
     const end_time = `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    const confirm_token = generateToken();
     const quote_token = generateToken();
     const accept_token = generateToken();
     const manage_token = generateToken();
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
       visitor_phone,
       note: visitor_address,
       status: 'pending',
+      confirm_token,
       created_at: now,
       quote_amount_cents: null,
       quote_currency: 'usd',
@@ -179,6 +181,7 @@ export async function POST(request: NextRequest) {
   const end_time = `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 
   // Generate tokens
+  const confirm_token = generateToken();
   const quote_token = generateToken();
   const accept_token = generateToken();
   const manage_token = generateToken();
@@ -196,6 +199,7 @@ export async function POST(request: NextRequest) {
       visitor_phone,
       note: visitor_address,
       status: 'pending',
+      confirm_token,
       quote_token,
       accept_token,
       manage_token,
