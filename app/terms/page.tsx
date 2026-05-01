@@ -34,7 +34,7 @@ export default function TermsPage() {
               <h2 className="text-xl font-semibold text-slate-800 mb-2">2. Description of Service</h2>
               <p>
                 AM or PM? provides a scheduling tool that allows users to create an availability page, share
-                it with their customers, and receive booking notifications via text message. The Service is
+                it with their customers, and receive booking notifications by email. The Service is
                 provided &quot;as is&quot; and we reserve the right to modify or discontinue it at any time.
               </p>
             </section>
@@ -61,11 +61,11 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">5. Text Message Communications</h2>
+              <h2 className="text-xl font-semibold text-slate-800 mb-2">5. Email Communications</h2>
               <p>
-                By using the Service, you consent to receive text messages related to your bookings and
-                account activity. Standard message and data rates may apply. You may opt out at any time by
-                contacting us or following the opt-out instructions in any message you receive.
+                By using the Service, you consent to receive emails related to your bookings and account
+                activity. You may opt out of non-essential emails at any time by contacting us or following
+                the unsubscribe link in any message you receive.
               </p>
             </section>
 

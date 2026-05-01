@@ -39,7 +39,7 @@ export default function PrivacyPage() {
               <p>We use the information we collect to:</p>
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li>Create and manage your availability page</li>
-                <li>Send you booking notifications via text message and email</li>
+                <li>Send you booking notifications by email</li>
                 <li>Communicate with you about your account and the Service</li>
                 <li>Improve and develop the Service</li>
                 <li>Comply with legal obligations</li>
@@ -47,11 +47,10 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">3. Text Message Communications</h2>
+              <h2 className="text-xl font-semibold text-slate-800 mb-2">3. Email Communications</h2>
               <p>
-                We use your phone number to send booking notifications and account-related alerts. By providing
-                your phone number, you consent to receive these messages. Standard message and data rates may
-                apply. You may opt out at any time by replying STOP to any message or by contacting us directly.
+                We use your email address to send booking notifications and account-related alerts. You may opt
+                out of non-essential emails at any time by contacting us directly.
               </p>
             </section>
 
@@ -59,7 +58,7 @@ export default function PrivacyPage() {
               <h2 className="text-xl font-semibold text-slate-800 mb-2">4. Sharing of Information</h2>
               <p>
                 We do not sell your personal information. We may share it with trusted third-party service
-                providers who assist in operating the Service (such as cloud hosting and SMS providers), under
+                providers who assist in operating the Service (such as cloud hosting and email providers, including Resend), under
                 strict confidentiality agreements. We may also disclose information when required by law.
               </p>
             </section>

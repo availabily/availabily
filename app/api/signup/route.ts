@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
-import { sendSMS } from '@/lib/twilio';
+import { nanoid } from 'nanoid';
+import { sendEmail, smsBodyToHtml } from '@/lib/email';
 import { isValidE164, toE164 } from '@/lib/utils';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
@@ -13,7 +14,8 @@ interface DaySchedule {
 }
 
 interface SignupBody {
-  phone: string;
+  email: string;
+  phone?: string;
   handle: string;
   timezone: string;
   schedule: Record<string, DaySchedule>;
@@ -27,17 +29,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { phone: rawPhone, handle, timezone, schedule } = body;
+  const { email, phone: rawPhone, handle, timezone, schedule } = body;
 
   // Validate required fields
-  if (!rawPhone || !handle || !timezone) {
+  if (!email || !handle || !timezone) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  // Validate and normalize phone
-  const phone = rawPhone.startsWith('+') ? rawPhone : toE164(rawPhone);
-  if (!isValidE164(phone)) {
-    return NextResponse.json({ error: 'Invalid phone number format. Use E.164 (e.g. +18085553434)' }, { status: 400 });
+  // Validate email
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+  }
+
+  // Normalize phone or generate placeholder
+  let phone: string;
+  if (rawPhone) {
+    const normalized = rawPhone.startsWith('+') ? rawPhone : toE164(rawPhone);
+    if (!isValidE164(normalized)) {
+      return NextResponse.json({ error: 'Invalid phone number format. Use E.164 (e.g. +18085553434)' }, { status: 400 });
+    }
+    phone = normalized;
+  } else {
+    phone = `pending-${nanoid(8)}`;
   }
 
   // Validate handle
@@ -70,7 +83,8 @@ export async function POST(request: NextRequest) {
         }));
       if (rules.length > 0) demoStore.createTimeRules(rules);
     }
-    await sendSMS(phone, `Your AM or PM? page is live. ${baseUrl}/${handle}`);
+    const text = `Your AM or PM? page is live. ${baseUrl}/${handle}`;
+    await sendEmail({ to: email, subject: 'Your AM or PM? page is live', text, html: smsBodyToHtml(text) });
     return NextResponse.json({ success: true, handle });
   }
 
@@ -102,7 +116,7 @@ export async function POST(request: NextRequest) {
   // Create user
   const { error: userError } = await supabase
     .from('users')
-    .insert({ phone, handle, timezone });
+    .insert({ phone, handle, timezone, email });
 
   if (userError) {
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
@@ -133,12 +147,13 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Send welcome SMS
+  // Send welcome email
   try {
-    await sendSMS(phone, `Your AM or PM? page is live. ${baseUrl}/${handle}`);
+    const text = `Your AM or PM? page is live. ${baseUrl}/${handle}`;
+    await sendEmail({ to: email, subject: 'Your AM or PM? page is live', text, html: smsBodyToHtml(text) });
   } catch (err) {
-    console.error('Failed to send welcome SMS:', err);
-    // Don't fail the signup if SMS fails
+    console.error('Failed to send welcome email:', err);
+    // Don't fail the signup if email fails
   }
 
   return NextResponse.json({ success: true, handle });

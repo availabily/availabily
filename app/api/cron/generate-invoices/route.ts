@@ -5,7 +5,7 @@ import { isDemo } from '@/lib/stripe';
 import { createInvoiceForMeeting } from '@/lib/stripe-invoices';
 import { ownerDisplayName } from '@/lib/owner-display';
 import { formatDollars, formatShortDay } from '@/lib/utils';
-import { sendSMS } from '@/lib/twilio';
+import { sendEmail, smsBodyToHtml } from '@/lib/email';
 import { Meeting, User, Profile } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
 
   for (const row of toRemind ?? []) {
     try {
-      await sendReminderSms(row as Meeting);
+      await sendReminderEmail(row as Meeting);
       await supabase
         .from('meetings')
         .update({ reminder_sent_at: new Date().toISOString() })
@@ -95,7 +95,12 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(results);
 }
 
-async function sendReminderSms(meeting: Meeting): Promise<void> {
+async function sendReminderEmail(meeting: Meeting): Promise<void> {
+  const visitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
+  if (!visitorEmail) {
+    console.warn('[email] visitor_email not set for reminder, meeting', meeting.id);
+    return;
+  }
   const supabase = createServerClient();
   const [{ data: userData }, { data: profileData }] = await Promise.all([
     supabase.from('users').select('*').eq('phone', meeting.user_phone).single(),
@@ -107,7 +112,7 @@ async function sendReminderSms(meeting: Meeting): Promise<void> {
   const shortDate = formatShortDay(meeting.meeting_date);
   const amount = formatDollars(meeting.quote_amount_cents ?? 0);
   const body = `Reminder: invoice for ${shortDate} appointment with ${ownerName} — $${amount}. Pay here: ${meeting.stripe_hosted_invoice_url}`;
-  await sendSMS(meeting.visitor_phone, body);
+  await sendEmail({ to: visitorEmail, subject: `Payment reminder: invoice for ${shortDate}`, text: body, html: smsBodyToHtml(body) });
 }
 
 async function runDemoCron(
@@ -173,7 +178,10 @@ async function runDemoCron(
           const shortDate = formatShortDay(m.meeting_date);
           const amount = formatDollars(m.quote_amount_cents ?? 0);
           const body = `Reminder: invoice for ${shortDate} appointment with ${ownerName} — $${amount}. Pay here: ${m.stripe_hosted_invoice_url}`;
-          await sendSMS(m.visitor_phone, body);
+          const visitorEmail: string | null = (m as { visitor_email?: string | null }).visitor_email ?? null;
+          if (visitorEmail) {
+            await sendEmail({ to: visitorEmail, subject: `Payment reminder: invoice for ${shortDate}`, text: body, html: smsBodyToHtml(body) });
+          }
           demoStore.updateMeeting(m.id, { reminder_sent_at: new Date().toISOString() });
           results.reminded++;
         } catch (err) {

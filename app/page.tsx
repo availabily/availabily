@@ -3,9 +3,9 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'AM or PM? — Schedule jobs. Get booked by text.',
+  title: 'AM or PM? — Schedule jobs. Get booked by email.',
   description:
-    'The simplest way to share your availability. Visitors pick a time, you confirm by text.',
+    'The simplest way to share your availability. Visitors pick a time, you confirm by email.',
 };
 
 const HOW_IT_WORKS = [
@@ -18,9 +18,9 @@ const HOW_IT_WORKS = [
   },
   {
     step: '2',
-    title: 'Text it to customers',
+    title: 'Share it with customers',
     description:
-      'Send your link to customers via text. No app required — just a simple URL.',
+      'Send your link to customers via any channel. No app required — just a simple URL.',
     icon: '💬',
   },
   {
@@ -32,9 +32,9 @@ const HOW_IT_WORKS = [
   },
   {
     step: '4',
-    title: 'You confirm by SMS',
+    title: 'You confirm by email',
     description:
-      "You get a text with their details. Tap confirm and you're connected. Done.",
+      "You get an email with their details. Confirm and you're connected. Done.",
     icon: '✅',
   },
 ];

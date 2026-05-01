@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getMeetingByQuoteToken, getOwnerForMeeting } from '@/lib/meeting-lookup';
 import { demoStore } from '@/lib/demo-store';
 import { createServerClient } from '@/lib/supabase';
-import { sendSMS } from '@/lib/twilio';
+import { sendEmail, smsBodyToHtml } from '@/lib/email';
 import { formatAmountCents, formatShortDate, formatTime } from '@/lib/utils';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
@@ -87,16 +87,21 @@ export async function POST(request: NextRequest) {
   const amountFormatted = formatAmountCents(amount_cents);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
 
-  const smsBody = [
+  const emailBody = [
     `${ownerDisplayName} sent you a quote for ${shortDate} ${time}:`,
     `${amountFormatted}${descriptionValue ? ' — ' + descriptionValue : ''}`,
     `Review & accept: ${baseUrl}/a/${meeting.accept_token}`,
   ].join('\n');
 
+  const visitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
   try {
-    await sendSMS(meeting.visitor_phone, smsBody);
+    if (visitorEmail) {
+      await sendEmail({ to: visitorEmail, subject: `Quote from ${ownerDisplayName}: ${amountFormatted}`, text: emailBody, html: smsBodyToHtml(emailBody) });
+    } else {
+      console.warn('[email] visitor_email not set for meeting', meeting.id);
+    }
   } catch (err) {
-    console.error('Failed to send quote SMS:', err);
+    console.error('Failed to send quote email:', err);
   }
 
   return NextResponse.json({ success: true });

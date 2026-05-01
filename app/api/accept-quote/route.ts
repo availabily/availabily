@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getMeetingByAcceptToken, getOwnerForMeeting } from '@/lib/meeting-lookup';
 import { demoStore } from '@/lib/demo-store';
 import { createServerClient } from '@/lib/supabase';
-import { sendSMS } from '@/lib/twilio';
+import { sendEmail, smsBodyToHtml } from '@/lib/email';
 import { formatShortDate, formatTime } from '@/lib/utils';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
@@ -80,18 +80,20 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      const ownerEmail: string | null = (user as { email?: string | null }).email ?? null;
+      const visitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
+      const acceptText = `✓ ${meeting.visitor_name} accepted your quote for ${shortDate} ${time}. You'll get an invoice to send after the appointment.`;
+      const confirmText = `✓ Booking confirmed with ${ownerName} for ${shortDate} ${time}. You'll receive an invoice after your appointment.`;
       await Promise.all([
-        sendSMS(
-          user.phone,
-          `✓ ${meeting.visitor_name} accepted your quote for ${shortDate} ${time}. You'll get an invoice to send after the appointment.`,
-        ),
-        sendSMS(
-          meeting.visitor_phone,
-          `✓ Booking confirmed with ${ownerName} for ${shortDate} ${time}. You'll receive an invoice after your appointment.`,
-        ),
+        ownerEmail
+          ? sendEmail({ to: ownerEmail, subject: `Quote accepted by ${meeting.visitor_name}`, text: acceptText, html: smsBodyToHtml(acceptText) })
+          : Promise.resolve(),
+        visitorEmail
+          ? sendEmail({ to: visitorEmail, subject: `Booking confirmed with ${ownerName}`, text: confirmText, html: smsBodyToHtml(confirmText) })
+          : Promise.resolve(),
       ]);
     } catch (err) {
-      console.error('Failed to send accept SMSes:', err);
+      console.error('Failed to send accept emails:', err);
     }
   } else {
     // decline
@@ -107,12 +109,13 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      await sendSMS(
-        user.phone,
-        `${meeting.visitor_name} declined your quote for ${shortDate} ${time}.`,
-      );
+      const ownerEmail: string | null = (user as { email?: string | null }).email ?? null;
+      if (ownerEmail) {
+        const declineText = `${meeting.visitor_name} declined your quote for ${shortDate} ${time}.`;
+        await sendEmail({ to: ownerEmail, subject: `Quote declined by ${meeting.visitor_name}`, text: declineText, html: smsBodyToHtml(declineText) });
+      }
     } catch (err) {
-      console.error('Failed to send decline SMS:', err);
+      console.error('Failed to send decline email:', err);
     }
   }
 

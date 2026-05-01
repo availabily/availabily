@@ -9,12 +9,12 @@ const metadataBaseUrl =
     : `https://${rawBase}`;
 
 export const metadata: Metadata = {
-  title: 'AM or PM? — Share your availability, get booked by text',
-  description: 'The simplest way to share your availability. Visitors pick a time, you confirm by text.',
+  title: 'AM or PM? — Share your availability, get booked by email',
+  description: 'The simplest way to share your availability. Visitors pick a time, you confirm by email.',
   metadataBase: new URL(metadataBaseUrl),
   openGraph: {
     title: 'AM or PM?',
-    description: 'Share your availability. Get booked by text.',
+    description: 'Share your availability. Get booked by email.',
     type: 'website',
   },
 };

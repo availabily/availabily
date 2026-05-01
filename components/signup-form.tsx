@@ -115,7 +115,6 @@ export function SignupForm() {
     useState<Record<number, DaySchedule>>(DEFAULT_SCHEDULE);
   const [profileData, setProfileData] =
     useState<ProfileFormData>(DEFAULT_PROFILE);
-  const [smsConsent, setSmsConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -173,11 +172,6 @@ export function SignupForm() {
     const enabledDays = Object.values(schedule).filter((d) => d.enabled);
     if (enabledDays.length === 0) {
       newErrors.schedule = 'Please enable at least one day';
-    }
-
-    if (!smsConsent) {
-      newErrors.smsConsent =
-        'Please agree to receive SMS messages to continue';
     }
 
     setErrors(newErrors);
@@ -420,29 +414,6 @@ export function SignupForm() {
         data={profileData}
         onChange={handleProfileChange}
       />
-
-      {/* SMS consent — required by Twilio before we can text the user */}
-      <div className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          id="signup-sms-consent"
-          checked={smsConsent}
-          onChange={(e) => setSmsConsent(e.target.checked)}
-          className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-        />
-        <label
-          htmlFor="signup-sms-consent"
-          className="text-xs text-slate-500 leading-relaxed"
-        >
-          I agree to receive SMS messages from AM or PM? related to my account,
-          including booking notifications, confirmations, and account updates.
-          Message and data rates may apply. Message frequency varies. Reply STOP
-          to opt out at any time, or HELP for help.
-        </label>
-      </div>
-      {errors.smsConsent && (
-        <p className="text-xs text-red-500 -mt-3">{errors.smsConsent}</p>
-      )}
 
       {error && (
         <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">

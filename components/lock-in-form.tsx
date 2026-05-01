@@ -19,7 +19,6 @@ export function LockInForm({ handle, date, startTime, onSuccess, onBack, classNa
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
-  const [smsConsent, setSmsConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -27,16 +26,16 @@ export function LockInForm({ handle, date, startTime, onSuccess, onBack, classNa
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) newErrors.name = 'Please add your name';
-    if (!phone.trim()) {
-      newErrors.phone = 'We need a phone number to text you';
-    } else {
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    if (phone.trim()) {
       const normalized = phone.startsWith('+') ? phone : toE164(phone);
       if (!isValidE164(normalized)) {
         newErrors.phone = 'Please enter a valid phone number';
       }
-    }
-    if (!smsConsent) {
-      newErrors.smsConsent = 'Please agree to receive SMS about your booking';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -50,7 +49,7 @@ export function LockInForm({ handle, date, startTime, onSuccess, onBack, classNa
     setError('');
 
     try {
-      const visitor_phone = phone.startsWith('+') ? phone : toE164(phone);
+      const visitor_phone = phone.trim() ? (phone.startsWith('+') ? phone : toE164(phone)) : undefined;
       const response = await fetch('/api/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -59,8 +58,9 @@ export function LockInForm({ handle, date, startTime, onSuccess, onBack, classNa
           date,
           start_time: startTime,
           visitor_name: name.trim(),
-          visitor_phone,
-          visitor_address: note.trim() || email.trim() || '-',
+          visitor_email: email.trim(),
+          ...(visitor_phone && { visitor_phone }),
+          ...(note.trim() && { visitor_address: note.trim() }),
         }),
       });
 
@@ -130,7 +130,7 @@ export function LockInForm({ handle, date, startTime, onSuccess, onBack, classNa
 
         <Input
           id="lockin-phone"
-          label="Phone number"
+          label="Phone (optional)"
           placeholder="+1 808 555 3434"
           type="tel"
           value={phone}
@@ -141,11 +141,12 @@ export function LockInForm({ handle, date, startTime, onSuccess, onBack, classNa
 
         <Input
           id="lockin-email"
-          label="Email (optional)"
+          label="Email"
           placeholder="jane@example.com"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          error={errors.email}
           autoComplete="email"
         />
 
@@ -164,22 +165,9 @@ export function LockInForm({ handle, date, startTime, onSuccess, onBack, classNa
           />
         </div>
 
-        {/* SMS Consent — preserved exactly */}
-        <div className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            id="sms-consent"
-            checked={smsConsent}
-            onChange={(e) => setSmsConsent(e.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-          />
-          <label htmlFor="sms-consent" className="text-xs text-slate-500 leading-relaxed">
-            I agree to receive SMS messages related to my booking request, including confirmations and updates. Message and data rates may apply. Reply STOP to opt out at any time.
-          </label>
-        </div>
-        {errors.smsConsent && (
-          <p className="text-xs text-red-500 -mt-2">{errors.smsConsent}</p>
-        )}
+        <p className="text-xs text-slate-500">
+          We&apos;ll email you to confirm your booking.
+        </p>
 
         {error && (
           <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getMeetingByManageToken, getOwnerForMeeting } from '@/lib/meeting-lookup';
 import { demoStore } from '@/lib/demo-store';
 import { createServerClient } from '@/lib/supabase';
-import { sendSMS } from '@/lib/twilio';
+import { sendEmail, smsBodyToHtml } from '@/lib/email';
 import { formatShortDate, formatTime } from '@/lib/utils';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
@@ -57,13 +57,14 @@ export async function POST(request: NextRequest) {
   const time = formatTime(meeting.start_time);
 
   const smsTail = reasonValue ? ` Reason: ${reasonValue}` : '';
+  const cancelText = `Your booking with ${ownerName} for ${shortDate} ${time} has been cancelled.${smsTail}`;
+  const visitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
   try {
-    await sendSMS(
-      meeting.visitor_phone,
-      `Your booking with ${ownerName} for ${shortDate} ${time} has been cancelled.${smsTail}`,
-    );
+    if (visitorEmail) {
+      await sendEmail({ to: visitorEmail, subject: `Booking cancelled with ${ownerName}`, text: cancelText, html: smsBodyToHtml(cancelText) });
+    }
   } catch (err) {
-    console.error('Failed to send cancel SMS:', err);
+    console.error('Failed to send cancel email:', err);
   }
 
   return NextResponse.json({ success: true });

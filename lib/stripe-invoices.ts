@@ -2,7 +2,7 @@ import { Meeting, Profile, User } from './types';
 import { demoStore } from './demo-store';
 import { createServerClient } from './supabase';
 import { isDemo, getStripe } from './stripe';
-import { sendSMS } from './twilio';
+import { sendEmail, smsBodyToHtml } from './email';
 import { ownerDisplayName } from './owner-display';
 import { formatDollars, formatDateDisplay, formatShortDay, formatTime } from './utils';
 
@@ -49,7 +49,7 @@ export async function getOrCreateConnectedCustomer(params: {
   return customer.id;
 }
 
-export async function sendInvoiceSmses(
+export async function sendInvoiceEmails(
   meeting: Meeting,
   profile: Profile | null,
   user: User,
@@ -61,18 +61,25 @@ export async function sendInvoiceSmses(
   const shortDate = formatShortDay(meeting.meeting_date);
   const time = formatTime(meeting.start_time);
 
-  const customerSms = `${ownerName} sent you an invoice for ${shortDate} ${time}: $${amount}. Pay here: ${hosted_url}`;
-  const ownerSms = `Invoice sent to ${meeting.visitor_name} for $${amount}. You'll get paid out to your bank within 2 business days after they pay.`;
+  const customerText = `${ownerName} sent you an invoice for ${shortDate} ${time}: $${amount}. Pay here: ${hosted_url}`;
+  const ownerText = `Invoice sent to ${meeting.visitor_name} for $${amount}. You'll get paid out to your bank within 2 business days after they pay.`;
+
+  const visitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
+  const ownerEmail: string | null = (user as { email?: string | null }).email ?? null;
 
   try {
-    await sendSMS(meeting.visitor_phone, customerSms);
+    if (visitorEmail) {
+      await sendEmail({ to: visitorEmail, subject: `Invoice from ${ownerName}: $${amount}`, text: customerText, html: smsBodyToHtml(customerText) });
+    }
   } catch (err) {
-    console.error('Failed to send invoice SMS to customer:', err);
+    console.error('Failed to send invoice email to customer:', err);
   }
   try {
-    await sendSMS(meeting.user_phone, ownerSms);
+    if (ownerEmail) {
+      await sendEmail({ to: ownerEmail, subject: `Invoice sent to ${meeting.visitor_name}`, text: ownerText, html: smsBodyToHtml(ownerText) });
+    }
   } catch (err) {
-    console.error('Failed to send invoice SMS to owner:', err);
+    console.error('Failed to send invoice email to owner:', err);
   }
 }
 
@@ -206,7 +213,7 @@ export async function createInvoiceForMeeting(meetingId: string): Promise<{
       stripe_hosted_invoice_url: hostedUrl,
       invoice_sent_at: now,
     });
-    await sendInvoiceSmses(
+    await sendInvoiceEmails(
       meeting,
       profile,
       user,
@@ -285,7 +292,7 @@ export async function createInvoiceForMeeting(meetingId: string): Promise<{
       .eq('id', meetingId);
 
     // Step 11: SMS
-    await sendInvoiceSmses(
+    await sendInvoiceEmails(
       meeting,
       profile,
       user,

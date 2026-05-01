@@ -4,7 +4,7 @@ import { getStripe } from '@/lib/stripe';
 import { refreshAccountStatus } from '@/lib/stripe-connect';
 import { ownerDisplayName } from '@/lib/owner-display';
 import { formatDollars, formatShortDay, formatTime } from '@/lib/utils';
-import { sendSMS } from '@/lib/twilio';
+import { sendEmail, smsBodyToHtml } from '@/lib/email';
 import { createServerClient } from '@/lib/supabase';
 import { User, Profile } from '@/lib/types';
 
@@ -84,18 +84,19 @@ async function handleEvent(event: Stripe.Event) {
         const shortDate = formatShortDay(meeting.meeting_date);
         const time = formatTime(meeting.start_time);
 
+        const visitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
+        const ownerEmail: string | null = (user as { email?: string | null }).email ?? null;
+        const paidCustomerText = `Payment confirmed — thanks for booking with ${ownerName}!`;
+        const paidOwnerText = `Payment received: $${amount} from ${meeting.visitor_name} for ${shortDate} ${time}. Funds arrive in your bank in ~2 business days.`;
         try {
-          await sendSMS(meeting.visitor_phone, `Payment confirmed — thanks for booking with ${ownerName}!`);
+          if (visitorEmail) await sendEmail({ to: visitorEmail, subject: 'Payment confirmed', text: paidCustomerText, html: smsBodyToHtml(paidCustomerText) });
         } catch (err) {
-          console.error('Failed to send payment-confirmed SMS to customer:', err);
+          console.error('Failed to send payment-confirmed email to customer:', err);
         }
         try {
-          await sendSMS(
-            meeting.user_phone,
-            `Payment received: $${amount} from ${meeting.visitor_name} for ${shortDate} ${time}. Funds arrive in your bank in ~2 business days.`
-          );
+          if (ownerEmail) await sendEmail({ to: ownerEmail, subject: `Payment received from ${meeting.visitor_name}`, text: paidOwnerText, html: smsBodyToHtml(paidOwnerText) });
         } catch (err) {
-          console.error('Failed to send payment-received SMS to owner:', err);
+          console.error('Failed to send payment-received email to owner:', err);
         }
       }
       break;
@@ -116,13 +117,14 @@ async function handleEvent(event: Stripe.Event) {
         if (Date.now() - lastNotified < 24 * 60 * 60 * 1000) break;
       }
 
+      const failedVisitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
       try {
-        await sendSMS(
-          meeting.visitor_phone,
-          `Your payment didn't go through. Try again: ${meeting.stripe_hosted_invoice_url}`
-        );
+        if (failedVisitorEmail) {
+          const failText = `Your payment didn't go through. Try again: ${meeting.stripe_hosted_invoice_url}`;
+          await sendEmail({ to: failedVisitorEmail, subject: 'Payment failed — action required', text: failText, html: smsBodyToHtml(failText) });
+        }
       } catch (err) {
-        console.error('Failed to send payment-failed SMS:', err);
+        console.error('Failed to send payment-failed email:', err);
       }
       await supabase
         .from('meetings')

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { demoStore } from '@/lib/demo-store';
 import { ownerDisplayName } from '@/lib/owner-display';
 import { formatDollars, formatShortDay, formatTime } from '@/lib/utils';
-import { sendSMS } from '@/lib/twilio';
+import { sendEmail, smsBodyToHtml } from '@/lib/email';
 import { User, Profile } from '@/lib/types';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
@@ -57,21 +57,19 @@ export async function POST(request: NextRequest) {
       paid_at: new Date().toISOString(),
     });
 
+    const paidVisitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
+    const paidOwnerEmail: string | null = (user as { email?: string | null }).email ?? null;
+    const paidCustomerText = `Payment confirmed — thanks for booking with ${ownerName}!`;
+    const paidOwnerText = `Payment received: $${amount} from ${meeting.visitor_name} for ${shortDate} ${time}. Funds arrive in your bank in ~2 business days.`;
     try {
-      await sendSMS(
-        meeting.visitor_phone,
-        `Payment confirmed — thanks for booking with ${ownerName}!`
-      );
+      if (paidVisitorEmail) await sendEmail({ to: paidVisitorEmail, subject: 'Payment confirmed', text: paidCustomerText, html: smsBodyToHtml(paidCustomerText) });
     } catch (err) {
-      console.error('Sim: failed to send customer paid SMS:', err);
+      console.error('Sim: failed to send customer paid email:', err);
     }
     try {
-      await sendSMS(
-        meeting.user_phone,
-        `Payment received: $${amount} from ${meeting.visitor_name} for ${shortDate} ${time}. Funds arrive in your bank in ~2 business days.`
-      );
+      if (paidOwnerEmail) await sendEmail({ to: paidOwnerEmail, subject: `Payment received from ${meeting.visitor_name}`, text: paidOwnerText, html: smsBodyToHtml(paidOwnerText) });
     } catch (err) {
-      console.error('Sim: failed to send owner paid SMS:', err);
+      console.error('Sim: failed to send owner paid email:', err);
     }
 
     return NextResponse.redirect(new URL(`/demo/invoice/${meetingId}`, request.url), 303);
@@ -90,13 +88,14 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const failedVisitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
   try {
-    await sendSMS(
-      meeting.visitor_phone,
-      `Your payment didn't go through. Try again: ${meeting.stripe_hosted_invoice_url}`
-    );
+    if (failedVisitorEmail) {
+      const failText = `Your payment didn't go through. Try again: ${meeting.stripe_hosted_invoice_url}`;
+      await sendEmail({ to: failedVisitorEmail, subject: 'Payment failed — action required', text: failText, html: smsBodyToHtml(failText) });
+    }
   } catch (err) {
-    console.error('Sim: failed to send payment-failed SMS:', err);
+    console.error('Sim: failed to send payment-failed email:', err);
   }
 
   demoStore.updateMeeting(meetingId, {

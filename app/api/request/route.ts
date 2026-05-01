@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
-import { sendSMS } from '@/lib/twilio';
+
+import { sendEmail, smsBodyToHtml } from '@/lib/email';
 import { isSlotAvailable } from '@/lib/scheduling';
 import { isValidE164, toE164, formatPhone, formatTime, formatShortDay, computeEndsAt } from '@/lib/utils';
 import { generateToken } from '@/lib/tokens';
@@ -13,8 +14,9 @@ interface RequestBody {
   date: string;
   start_time: string;
   visitor_name: string;
-  visitor_phone: string;
-  visitor_address: string;
+  visitor_email: string;
+  visitor_phone?: string;
+  visitor_address?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -25,10 +27,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { handle, date, start_time, visitor_name, visitor_phone: rawVisitorPhone, visitor_address } = body;
+  const { handle, date, start_time, visitor_name, visitor_email, visitor_phone: rawVisitorPhone, visitor_address } = body;
 
-  if (!handle || !date || !start_time || !visitor_name || !rawVisitorPhone || !visitor_address) {
+  if (!handle || !date || !start_time || !visitor_name || !visitor_email) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  // Validate visitor email
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(visitor_email)) {
+    return NextResponse.json({ error: 'Invalid visitor email address' }, { status: 400 });
   }
 
   // Validate date format
@@ -41,14 +48,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid time format. Use HH:MM' }, { status: 400 });
   }
 
-  // Normalize and validate visitor phone
-  const visitor_phone = rawVisitorPhone.startsWith('+') ? rawVisitorPhone : toE164(rawVisitorPhone);
-  if (!isValidE164(visitor_phone)) {
-    return NextResponse.json({ error: 'Invalid visitor phone number' }, { status: 400 });
+  // Normalize and validate visitor phone (optional)
+  let visitor_phone: string | null = null;
+  if (rawVisitorPhone) {
+    visitor_phone = rawVisitorPhone.startsWith('+') ? rawVisitorPhone : toE164(rawVisitorPhone);
+    if (!isValidE164(visitor_phone)) {
+      return NextResponse.json({ error: 'Invalid visitor phone number' }, { status: 400 });
+    }
   }
 
   // Validate address length
-  if (visitor_address.length > 200) {
+  if (visitor_address && visitor_address.length > 200) {
     return NextResponse.json({ error: 'Address is too long (max 200 characters)' }, { status: 400 });
   }
 
@@ -58,7 +68,7 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    if (demoStore.countPendingMeetings(user.phone, visitor_phone, twentyFourHoursAgo) >= 3) {
+    if (visitor_phone && demoStore.countPendingMeetings(user.phone, visitor_phone, twentyFourHoursAgo) >= 3) {
       return NextResponse.json({ error: 'Too many pending requests.' }, { status: 429 });
     }
 
@@ -84,8 +94,8 @@ export async function POST(request: NextRequest) {
       start_time,
       end_time,
       visitor_name,
-      visitor_phone,
-      note: visitor_address,
+      visitor_phone: visitor_phone ?? '',
+      note: visitor_address ?? '',
       status: 'pending',
       confirm_token,
       created_at: now,
@@ -113,11 +123,18 @@ export async function POST(request: NextRequest) {
     const smsBody = [
       'New booking request',
       `${formatShortDay(date)} ${formatTime(start_time)}`,
-      `${visitor_name} – ${formatPhone(visitor_phone)}`,
-      visitor_address,
-      `Send quote: ${baseUrl}/q/${quote_token}`,
+      visitor_phone ? `${visitor_name} – ${formatPhone(visitor_phone)}` : visitor_name,
+      visitor_address ? `Note: ${visitor_address}` : null,
+      `Email: ${visitor_email}`,
+      `Confirm: ${baseUrl}/c/${confirm_token}`,
     ].filter(Boolean).join('\n');
-    await sendSMS(user.phone, smsBody);
+    const ownerEmail: string | null = (user as { email?: string | null }).email ?? null;
+    if (!ownerEmail) {
+      console.warn('[email] owner email not set for user', user.phone);
+    } else {
+      await sendEmail({ to: ownerEmail, subject: `New booking request from ${visitor_name}`, text: smsBody, html: smsBodyToHtml(smsBody) });
+    }
+    await sendEmail({ to: visitor_email, subject: 'Booking request received', text: `Your request for ${formatShortDay(date)} at ${formatTime(start_time)} has been received. You'll hear back soon.`, html: smsBodyToHtml(`Your request for ${formatShortDay(date)} at ${formatTime(start_time)} has been received. You'll hear back soon.`) });
     return NextResponse.json({ success: true });
   }
 
@@ -137,16 +154,18 @@ export async function POST(request: NextRequest) {
 
   // Rate limiting: max 3 pending requests per visitor phone per owner
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { count: pendingCount } = await supabase
-    .from('meetings')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_phone', user.phone)
-    .eq('visitor_phone', visitor_phone)
-    .eq('status', 'pending')
-    .gte('created_at', twentyFourHoursAgo);
+  if (visitor_phone) {
+    const { count: pendingCount } = await supabase
+      .from('meetings')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_phone', user.phone)
+      .eq('visitor_phone', visitor_phone)
+      .eq('status', 'pending')
+      .gte('created_at', twentyFourHoursAgo);
 
-  if ((pendingCount ?? 0) >= 3) {
-    return NextResponse.json({ error: 'Too many pending requests. Please wait for existing requests to be handled.' }, { status: 429 });
+    if ((pendingCount ?? 0) >= 3) {
+      return NextResponse.json({ error: 'Too many pending requests. Please wait for existing requests to be handled.' }, { status: 429 });
+    }
   }
 
   // Fetch time rules
@@ -196,8 +215,9 @@ export async function POST(request: NextRequest) {
       start_time,
       end_time,
       visitor_name,
-      visitor_phone,
-      note: visitor_address,
+      visitor_email,
+      visitor_phone: visitor_phone ?? null,
+      note: visitor_address ?? null,
       status: 'pending',
       confirm_token,
       quote_token,
@@ -210,20 +230,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create meeting request' }, { status: 500 });
   }
 
-  // Send SMS to owner
+  // Notify owner and confirm to visitor
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
   const smsBody = [
     'New booking request',
     `${formatShortDay(date)} ${formatTime(start_time)}`,
-    `${visitor_name} – ${formatPhone(visitor_phone)}`,
-    visitor_address,
-    `Send quote: ${baseUrl}/q/${quote_token}`,
+    visitor_phone ? `${visitor_name} – ${formatPhone(visitor_phone)}` : visitor_name,
+    visitor_address ? `Note: ${visitor_address}` : null,
+    `Email: ${visitor_email}`,
+    `Confirm: ${baseUrl}/c/${confirm_token}`,
   ].filter(Boolean).join('\n');
 
   try {
-    await sendSMS(user.phone, smsBody);
+    const ownerEmail: string | null = (user as { email?: string | null }).email ?? null;
+    if (!ownerEmail) {
+      console.warn('[email] owner email not set for user', user.phone);
+    } else {
+      await sendEmail({ to: ownerEmail, subject: `New booking request from ${visitor_name}`, text: smsBody, html: smsBodyToHtml(smsBody) });
+    }
+    await sendEmail({ to: visitor_email, subject: 'Booking request received', text: `Your request for ${formatShortDay(date)} at ${formatTime(start_time)} has been received. You'll hear back soon.`, html: smsBodyToHtml(`Your request for ${formatShortDay(date)} at ${formatTime(start_time)} has been received. You'll hear back soon.`) });
   } catch (err) {
-    console.error('Failed to send request SMS:', err);
+    console.error('Failed to send request email:', err);
     // Still return success - meeting is created
   }
 
