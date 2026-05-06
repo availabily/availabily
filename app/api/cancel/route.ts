@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
   const smsTail = reasonValue ? ` Reason: ${reasonValue}` : '';
   const cancelText = `Your booking with ${ownerName} for ${shortDate} ${time} has been cancelled.${smsTail}`;
-  const visitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
+  const visitorEmail: string | null = meeting.visitor_email ?? null;
   try {
     if (visitorEmail) {
       await sendEmail({ to: visitorEmail, subject: `Booking cancelled with ${ownerName}`, text: cancelText, html: smsBodyToHtml(cancelText) });

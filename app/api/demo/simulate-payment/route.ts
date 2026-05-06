@@ -57,8 +57,8 @@ export async function POST(request: NextRequest) {
       paid_at: new Date().toISOString(),
     });
 
-    const paidVisitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
-    const paidOwnerEmail: string | null = (user as { email?: string | null }).email ?? null;
+    const paidVisitorEmail: string | null = meeting.visitor_email ?? null;
+    const paidOwnerEmail: string | null = user.email ?? null;
     const paidCustomerText = `Payment confirmed — thanks for booking with ${ownerName}!`;
     const paidOwnerText = `Payment received: $${amount} from ${meeting.visitor_name} for ${shortDate} ${time}. Funds arrive in your bank in ~2 business days.`;
     try {
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const failedVisitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
+  const failedVisitorEmail: string | null = meeting.visitor_email ?? null;
   try {
     if (failedVisitorEmail) {
       const failText = `Your payment didn't go through. Try again: ${meeting.stripe_hosted_invoice_url}`;

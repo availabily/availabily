@@ -84,8 +84,8 @@ async function handleEvent(event: Stripe.Event) {
         const shortDate = formatShortDay(meeting.meeting_date);
         const time = formatTime(meeting.start_time);
 
-        const visitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
-        const ownerEmail: string | null = (user as { email?: string | null }).email ?? null;
+        const visitorEmail: string | null = meeting.visitor_email ?? null;
+        const ownerEmail: string | null = user.email ?? null;
         const paidCustomerText = `Payment confirmed — thanks for booking with ${ownerName}!`;
         const paidOwnerText = `Payment received: $${amount} from ${meeting.visitor_name} for ${shortDate} ${time}. Funds arrive in your bank in ~2 business days.`;
         try {
@@ -117,7 +117,7 @@ async function handleEvent(event: Stripe.Event) {
         if (Date.now() - lastNotified < 24 * 60 * 60 * 1000) break;
       }
 
-      const failedVisitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
+      const failedVisitorEmail: string | null = meeting.visitor_email ?? null;
       try {
         if (failedVisitorEmail) {
           const failText = `Your payment didn't go through. Try again: ${meeting.stripe_hosted_invoice_url}`;

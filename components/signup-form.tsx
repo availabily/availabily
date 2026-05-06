@@ -102,6 +102,7 @@ async function uploadImageFile(
 
 export function SignupForm() {
   const router = useRouter();
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [handle, setHandle] = useState('');
   const [timezone, setTimezone] = useState(() => {
@@ -149,9 +150,13 @@ export function SignupForm() {
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else {
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (phone.trim()) {
       const normalized = phone.startsWith('+') ? phone : toE164(phone);
       if (!isValidE164(normalized)) {
         newErrors.phone = 'Please enter a valid phone number';
@@ -186,14 +191,17 @@ export function SignupForm() {
     setError('');
 
     try {
-      const normalizedPhone = phone.startsWith('+') ? phone : toE164(phone);
+      const normalizedPhone = phone.trim()
+        ? phone.startsWith('+') ? phone : toE164(phone)
+        : undefined;
 
       // Step 1: Create user + schedule
       const response = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone: normalizedPhone,
+          email,
+          ...(normalizedPhone ? { phone: normalizedPhone } : {}),
           handle,
           timezone,
           schedule,
@@ -214,7 +222,7 @@ export function SignupForm() {
       if (profileData.avatar_file) {
         const uploadedUrl = await uploadImageFile(
           profileData.avatar_file,
-          normalizedPhone,
+          normalizedPhone ?? '',
           'avatar'
         );
         if (uploadedUrl) finalAvatarUrl = uploadedUrl;
@@ -224,7 +232,7 @@ export function SignupForm() {
       for (const file of profileData.gallery_files) {
         const uploadedUrl = await uploadImageFile(
           file,
-          normalizedPhone,
+          normalizedPhone ?? '',
           'gallery'
         );
         if (uploadedUrl) finalGalleryUrls.push(uploadedUrl);
@@ -246,7 +254,7 @@ export function SignupForm() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            phone: normalizedPhone,
+            phone: normalizedPhone ?? '',
             display_name: profileData.display_name,
             business_name: profileData.business_name,
             headline: profileData.headline,
@@ -281,9 +289,23 @@ export function SignupForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="flex flex-col gap-1.5">
+        <Input
+          id="email"
+          label="Email"
+          placeholder="you@example.com"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          error={errors.email}
+          autoComplete="email"
+        />
+        <p className="text-xs text-slate-500">We&apos;ll email booking requests here.</p>
+      </div>
+
       <Input
         id="phone"
-        label="Business number for confirmations"
+        label="Phone number (optional)"
         placeholder="+1 808 555 3434"
         type="tel"
         value={phone}

@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
 }
 
 async function sendReminderEmail(meeting: Meeting): Promise<void> {
-  const visitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
+  const visitorEmail: string | null = meeting.visitor_email ?? null;
   if (!visitorEmail) {
     console.warn('[email] visitor_email not set for reminder, meeting', meeting.id);
     return;

@@ -166,7 +166,7 @@ export function AcceptPageClient({ meeting: initialMeeting, user, profile }: Acc
               <div className="rounded-2xl bg-brand-50 border border-brand-100 px-5 py-4">
                 <p className="text-sm text-slate-600 leading-relaxed">
                   After your appointment, <span className="font-semibold">{ownerName}</span> will
-                  send you an invoice via text. Payment is handled securely by Stripe.
+                  send you an invoice by email. Payment is handled securely by Stripe.
                 </p>
               </div>
 
@@ -271,7 +271,7 @@ export function AcceptPageClient({ meeting: initialMeeting, user, profile }: Acc
               </p>
               {meeting.quote_amount_cents && (
                 <p className="text-sm text-slate-400 mt-2">
-                  {formatAmountCents(meeting.quote_amount_cents)} · We&apos;ll text you when your
+                  {formatAmountCents(meeting.quote_amount_cents)} · We&apos;ll email you when your
                   invoice is ready after the appointment.
                 </p>
               )}

@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const ownerEmail: string | null = (user as { email?: string | null }).email ?? null;
-      const visitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
+      const ownerEmail: string | null = user.email ?? null;
+      const visitorEmail: string | null = meeting.visitor_email ?? null;
       const acceptText = `✓ ${meeting.visitor_name} accepted your quote for ${shortDate} ${time}. You'll get an invoice to send after the appointment.`;
       const confirmText = `✓ Booking confirmed with ${ownerName} for ${shortDate} ${time}. You'll receive an invoice after your appointment.`;
       await Promise.all([
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const ownerEmail: string | null = (user as { email?: string | null }).email ?? null;
+      const ownerEmail: string | null = user.email ?? null;
       if (ownerEmail) {
         const declineText = `${meeting.visitor_name} declined your quote for ${shortDate} ${time}.`;
         await sendEmail({ to: ownerEmail, subject: `Quote declined by ${meeting.visitor_name}`, text: declineText, html: smsBodyToHtml(declineText) });

@@ -1,6 +1,6 @@
 # AM or PM?
 
-A minimal, beautiful scheduling app. Share your availability link → visitors pick a time → you confirm by text.
+A minimal, beautiful scheduling app. Share your availability link → visitors pick a time → you confirm by email.
 
 ## Quick preview (no accounts needed)
 
@@ -22,7 +22,7 @@ Then open:
 | [localhost:3000/demo](http://localhost:3000/demo) | Pre-built availability page (Mon–Fri 9–5 PT) |
 | [localhost:3000/signup](http://localhost:3000/signup) | Signup flow (creates users in-memory) |
 
-In demo mode, SMS messages are **printed to your terminal** instead of sent. All data resets when you restart the server.
+In demo mode, emails are **printed to your terminal** instead of sent. All data resets when you restart the server.
 
 ---
 
@@ -31,15 +31,14 @@ In demo mode, SMS messages are **printed to your terminal** instead of sent. All
 1. **Create your page** at `/signup` — add your phone, handle, and weekly availability
 2. **Share your link** — `amorpm.com/yourhandle`
 3. **Visitors pick a time** — they choose a slot and enter their info
-4. **You get an SMS** with a confirm link
-5. **Tap confirm** — you're redirected into your SMS app with a prewritten message to the visitor
+4. **You get an email** with a confirm link
+5. **Tap confirm** — the visitor receives a confirmation email
 
 ## Tech Stack
 
 - **Next.js App Router** + TypeScript
 - **TailwindCSS**
 - **Supabase** (PostgreSQL)
-- **Twilio** (SMS)
 - **Vercel** (deployment)
 
 ## Production Setup
@@ -111,7 +110,6 @@ availabily/
 │   ├── scheduling.ts           # Slot computation engine
 │   ├── demo-store.ts           # In-memory store for demo mode
 │   ├── supabase.ts             # Supabase client
-│   ├── twilio.ts               # Twilio SMS helper
 │   ├── utils.ts                # Formatting utilities
 │   └── types.ts                # TypeScript types
 ├── components/

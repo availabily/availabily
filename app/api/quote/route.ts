@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     `Review & accept: ${baseUrl}/a/${meeting.accept_token}`,
   ].join('\n');
 
-  const visitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
+  const visitorEmail: string | null = meeting.visitor_email ?? null;
   try {
     if (visitorEmail) {
       await sendEmail({ to: visitorEmail, subject: `Quote from ${ownerDisplayName}: ${amountFormatted}`, text: emailBody, html: smsBodyToHtml(emailBody) });

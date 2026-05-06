@@ -157,7 +157,7 @@ export function ManagePageClient({ meeting: initialMeeting }: ManagePageClientPr
                 Cancel this appointment?
               </h2>
               <p className="text-sm text-slate-500 mb-4">
-                {meeting.visitor_name} will be notified by text.
+                {meeting.visitor_name} will be notified by email.
               </p>
 
               <form onSubmit={handleCancel} className="space-y-4">

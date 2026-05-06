@@ -35,7 +35,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const dayName = formatFullDay(meeting.meeting_date);
   const time = formatTime(meeting.start_time);
   const emailBody = `Confirmed for ${dayName} at ${time}`;
-  const visitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
+  const visitorEmail: string | null = meeting.visitor_email ?? null;
   try {
     if (visitorEmail) {
       await sendEmail({

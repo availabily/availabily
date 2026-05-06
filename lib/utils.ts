@@ -147,7 +147,7 @@ export function getCurrentDateInTz(timezone: string): string {
 }
 
 /**
- * Format cents to a plain dollar string for SMS — no $ sign, no trailing .00.
+ * Format cents to a plain dollar string for email — no $ sign, no trailing .00.
  * e.g. 15000 → "150", 123450 → "1,234.50"
  */
 export function formatDollars(cents: number): string {

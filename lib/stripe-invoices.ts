@@ -64,8 +64,8 @@ export async function sendInvoiceEmails(
   const customerText = `${ownerName} sent you an invoice for ${shortDate} ${time}: $${amount}. Pay here: ${hosted_url}`;
   const ownerText = `Invoice sent to ${meeting.visitor_name} for $${amount}. You'll get paid out to your bank within 2 business days after they pay.`;
 
-  const visitorEmail: string | null = (meeting as { visitor_email?: string | null }).visitor_email ?? null;
-  const ownerEmail: string | null = (user as { email?: string | null }).email ?? null;
+  const visitorEmail: string | null = meeting.visitor_email ?? null;
+  const ownerEmail: string | null = user.email ?? null;
 
   try {
     if (visitorEmail) {

@@ -582,7 +582,7 @@ export function QuotePageClient({
               {meeting.quote_description && (
                 <p className="text-sm text-slate-500 mb-3">{meeting.quote_description}</p>
               )}
-              <p className="text-sm text-slate-500">We&apos;ll text you when they accept.</p>
+              <p className="text-sm text-slate-500">We&apos;ll email you when they accept.</p>
               <div className="mt-5 pt-4 border-t border-slate-100">
                 <Link
                   href={manageHref}

@@ -12,6 +12,7 @@ export const DEMO_HANDLE = 'demo';
 const users: User[] = [
   {
     phone: DEMO_PHONE,
+    email: null,
     handle: DEMO_HANDLE,
     timezone: 'America/Los_Angeles',
     created_at: new Date().toISOString(),

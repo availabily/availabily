@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
       end_time,
       visitor_name,
       visitor_phone: visitor_phone ?? '',
+      visitor_email: visitor_email ?? null,
       note: visitor_address ?? '',
       status: 'pending',
       confirm_token,
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
       `Email: ${visitor_email}`,
       `Confirm: ${baseUrl}/c/${confirm_token}`,
     ].filter(Boolean).join('\n');
-    const ownerEmail: string | null = (user as { email?: string | null }).email ?? null;
+    const ownerEmail: string | null = user.email ?? null;
     if (!ownerEmail) {
       console.warn('[email] owner email not set for user', user.phone);
     } else {
@@ -242,7 +243,7 @@ export async function POST(request: NextRequest) {
   ].filter(Boolean).join('\n');
 
   try {
-    const ownerEmail: string | null = (user as { email?: string | null }).email ?? null;
+    const ownerEmail: string | null = user.email ?? null;
     if (!ownerEmail) {
       console.warn('[email] owner email not set for user', user.phone);
     } else {

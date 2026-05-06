@@ -1,5 +1,6 @@
 export interface User {
   phone: string;
+  email: string | null;
   handle: string;
   timezone: string;
   created_at: string;
@@ -25,6 +26,7 @@ export interface Meeting {
   end_time: string;
   visitor_name: string;
   visitor_phone: string;
+  visitor_email: string | null;
   note: string | null; // stores visitor_address for backward compatibility
   status:
     | 'pending'
