@@ -45,7 +45,7 @@ export default async function ConnectReturnPage({
                 You&apos;re all set. Payments are ready.
               </h1>
               <p className="text-sm text-slate-500">
-                If a customer is waiting on a quote from you, return to your text messages and tap the booking link again.
+                If a customer is waiting on a quote from you, check your email for the booking link and tap it again.
               </p>
             </>
           ) : details_submitted ? (
@@ -58,7 +58,6 @@ export default async function ConnectReturnPage({
               </h1>
               <p className="text-sm text-slate-500">
                 Usually takes a few minutes; sometimes a day.
-                {/* TODO: text the owner when Stripe verification completes (webhook in prompt 4) */}
               </p>
             </>
           ) : (
