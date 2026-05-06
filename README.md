@@ -28,7 +28,7 @@ In demo mode, emails are **printed to your terminal** instead of sent. All data 
 
 ## How It Works
 
-1. **Create your page** at `/signup` — add your phone, handle, and weekly availability
+1. **Create your page** at `/signup` — add your email, handle, and weekly availability
 2. **Share your link** — `amorpm.com/yourhandle`
 3. **Visitors pick a time** — they choose a slot and enter their info
 4. **You get an email** with a confirm link
