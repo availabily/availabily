@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { demoStore } from '@/lib/demo-store';
-import { isValidE164 } from '@/lib/utils';
 import { ProfileImage } from '@/lib/types';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
@@ -11,14 +10,14 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const phone = formData.get('phone') as string | null;
+    const handle = formData.get('handle') as string | null;
     const imageType = formData.get('image_type') as string | null;
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
-    if (!phone || !isValidE164(phone)) {
-      return NextResponse.json({ error: 'Valid phone number required' }, { status: 400 });
+    if (!handle) {
+      return NextResponse.json({ error: 'handle is required' }, { status: 400 });
     }
     if (!imageType || !['avatar', 'gallery'].includes(imageType)) {
       return NextResponse.json({ error: 'image_type must be avatar or gallery' }, { status: 400 });
@@ -35,6 +34,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (isDemo) {
+      const user = demoStore.getUserByHandle(handle);
+      if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      const phone = user.phone;
+
       // In demo mode, store as base64 data URL
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -63,6 +66,17 @@ export async function POST(request: NextRequest) {
     // Production: upload to Supabase Storage
     const { createServerClient } = await import('@/lib/supabase');
     const supabase = createServerClient();
+
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('phone')
+      .eq('handle', handle)
+      .single();
+
+    if (userError || !userData) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    const phone = userData.phone;
 
     const ext = file.name.split('.').pop() || 'jpg';
     const fileName = `${phone.replace('+', '')}/${imageType}-${Date.now()}.${ext}`;

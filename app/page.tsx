@@ -13,7 +13,7 @@ const HOW_IT_WORKS = [
     step: '1',
     title: 'Set up your profile',
     description:
-      'Build your business profile and schedule in 60 seconds. Get a link like amorpm.com/lahainawindows.',
+      'Build your business profile and schedule in 60 seconds. Get a link like amorpm.com/lahainalawn.',
     icon: '🏢',
   },
   {
@@ -95,7 +95,7 @@ export default function HomePage() {
               <h3 className="text-base font-bold text-slate-900 mb-2">
                 {item.title}
               </h3>
-              <p className="text-sm text-slate-500 leading-relaxed">
+              <p className="text-sm text-slate-500 leading-relaxed break-words">
                 {item.description}
               </p>
             </div>

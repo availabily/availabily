@@ -83,12 +83,12 @@ function hasProfileData(data: ProfileFormData): boolean {
 
 async function uploadImageFile(
   file: File,
-  phone: string,
+  handle: string,
   imageType: 'avatar' | 'gallery'
 ): Promise<string | null> {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('phone', phone);
+  formData.append('handle', handle);
   formData.append('image_type', imageType);
   try {
     const res = await fetch('/api/upload', { method: 'POST', body: formData });
@@ -222,7 +222,7 @@ export function SignupForm() {
       if (profileData.avatar_file) {
         const uploadedUrl = await uploadImageFile(
           profileData.avatar_file,
-          normalizedPhone ?? '',
+          handle,
           'avatar'
         );
         if (uploadedUrl) finalAvatarUrl = uploadedUrl;
@@ -232,7 +232,7 @@ export function SignupForm() {
       for (const file of profileData.gallery_files) {
         const uploadedUrl = await uploadImageFile(
           file,
-          normalizedPhone ?? '',
+          handle,
           'gallery'
         );
         if (uploadedUrl) finalGalleryUrls.push(uploadedUrl);
