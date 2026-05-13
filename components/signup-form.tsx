@@ -254,7 +254,7 @@ export function SignupForm() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            phone: normalizedPhone ?? '',
+            handle,
             display_name: profileData.display_name,
             business_name: profileData.business_name,
             headline: profileData.headline,

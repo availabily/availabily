@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
-import { isValidE164 } from '@/lib/utils';
 import { Profile, PromptBlock } from '@/lib/types';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 interface ProfileBody {
-  phone: string;
+  phone?: string;
+  handle?: string;
   display_name?: string;
   business_name?: string;
   headline?: string;
@@ -21,8 +21,8 @@ interface ProfileBody {
 }
 
 function validateProfile(body: ProfileBody): string | null {
-  if (!body.phone || !isValidE164(body.phone)) {
-    return 'Valid phone number in E.164 format is required';
+  if (!body.phone && !body.handle) {
+    return 'Either phone or handle is required';
   }
   if (body.bio && body.bio.length > 300) {
     return 'Bio must be 300 characters or fewer';
@@ -75,8 +75,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
+  // Resolve phone from handle when caller supplies handle instead of phone
+  let resolvedPhone = body.phone ?? '';
+  if (!resolvedPhone && body.handle) {
+    if (isDemo) {
+      const u = demoStore.getUserByHandle(body.handle);
+      if (!u) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      resolvedPhone = u.phone;
+    } else {
+      const sb = createServerClient();
+      const { data: u } = await sb.from('users').select('phone').eq('handle', body.handle).single();
+      if (!u) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      resolvedPhone = u.phone;
+    }
+  }
+
   const profile: Profile = {
-    user_phone: body.phone,
+    user_phone: resolvedPhone,
     display_name: body.display_name ?? '',
     business_name: body.business_name ?? '',
     headline: body.headline ?? '',
@@ -90,7 +105,7 @@ export async function POST(request: NextRequest) {
   };
 
   if (isDemo) {
-    const user = demoStore.getUserByPhone(body.phone);
+    const user = demoStore.getUserByPhone(resolvedPhone);
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -100,21 +115,22 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServerClient();
 
-  // Verify user exists
-  const { data: user } = await supabase
-    .from('users')
-    .select('phone')
-    .eq('phone', body.phone)
-    .single();
-
-  if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+  // Verify user exists (skip if we already looked up via handle above)
+  if (body.phone && !body.handle) {
+    const { data: user } = await supabase
+      .from('users')
+      .select('phone')
+      .eq('phone', resolvedPhone)
+      .single();
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
   }
 
   const { error } = await supabase
     .from('profiles')
     .upsert({
-      user_phone: body.phone,
+      user_phone: resolvedPhone,
       display_name: profile.display_name,
       business_name: profile.business_name,
       headline: profile.headline,
