@@ -80,7 +80,6 @@ export async function POST(request: NextRequest) {
 
     const [h, m] = start_time.split(':').map(Number);
     const end_time = `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    const confirm_token = generateToken();
     const quote_token = generateToken();
     const accept_token = generateToken();
     const manage_token = generateToken();
@@ -98,7 +97,7 @@ export async function POST(request: NextRequest) {
       visitor_email: visitor_email ?? null,
       note: visitor_address ?? '',
       status: 'pending',
-      confirm_token,
+      confirm_token: '',
       created_at: now,
       quote_amount_cents: null,
       quote_currency: 'usd',
@@ -127,7 +126,7 @@ export async function POST(request: NextRequest) {
       visitor_phone ? `${visitor_name} – ${formatPhone(visitor_phone)}` : visitor_name,
       visitor_address ? `Note: ${visitor_address}` : null,
       `Email: ${visitor_email}`,
-      `Confirm: ${baseUrl}/c/${confirm_token}`,
+      `Manage: ${baseUrl}/q/${quote_token}`,
     ].filter(Boolean).join('\n');
     const ownerEmail: string | null = user.email ?? null;
     if (!ownerEmail) {
@@ -201,7 +200,6 @@ export async function POST(request: NextRequest) {
   const end_time = `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 
   // Generate tokens
-  const confirm_token = generateToken();
   const quote_token = generateToken();
   const accept_token = generateToken();
   const manage_token = generateToken();
@@ -220,7 +218,6 @@ export async function POST(request: NextRequest) {
       visitor_phone: visitor_phone ?? null,
       note: visitor_address ?? null,
       status: 'pending',
-      confirm_token,
       quote_token,
       accept_token,
       manage_token,
@@ -239,7 +236,7 @@ export async function POST(request: NextRequest) {
     visitor_phone ? `${visitor_name} – ${formatPhone(visitor_phone)}` : visitor_name,
     visitor_address ? `Note: ${visitor_address}` : null,
     `Email: ${visitor_email}`,
-    `Confirm: ${baseUrl}/c/${confirm_token}`,
+    `Manage: ${baseUrl}/q/${quote_token}`,
   ].filter(Boolean).join('\n');
 
   try {

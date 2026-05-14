@@ -3,17 +3,12 @@ import { demoStore } from '@/lib/demo-store';
 import { createServerClient } from '@/lib/supabase';
 import { isDemo } from '@/lib/stripe';
 import { ensureAccountRecord, createOnboardingLink } from '@/lib/stripe-connect';
-import { isValidE164 } from '@/lib/utils';
-
-// V1 auth: phone param is sufficient because Stripe onboarding itself is the
-// auth wall and account IDs aren't guessable. Before scaling, gate this with
-// a phone-verified session.
 
 export async function GET(request: NextRequest) {
   const phone = request.nextUrl.searchParams.get('phone') ?? '';
 
-  if (!isValidE164(phone)) {
-    return NextResponse.json({ error: 'Invalid phone' }, { status: 400 });
+  if (!phone) {
+    return NextResponse.json({ error: 'phone is required' }, { status: 400 });
   }
 
   if (isDemo) {
