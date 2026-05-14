@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import type { Meeting } from './types';
 
 export function smsBodyToHtml(text: string): string {
   const esc = (s: string) =>
@@ -45,5 +46,45 @@ export async function sendEmail(opts: {
 
   if (error) {
     throw new Error(`Resend email failed: ${error.message}`);
+  }
+}
+
+export async function sendCompletionSummaryEmail(opts: {
+  meeting: Meeting;
+  ownerName: string;
+  ownerEmail: string | null;
+}): Promise<void> {
+  const { meeting, ownerName, ownerEmail } = opts;
+  const visitorEmail = meeting.visitor_email ?? null;
+
+  const dateStr = new Date(meeting.meeting_date + 'T12:00:00').toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric',
+  });
+  const amountStr = meeting.quote_amount_cents
+    ? `$${(meeting.quote_amount_cents / 100).toFixed(2)}`
+    : null;
+
+  if (visitorEmail) {
+    const body = amountStr
+      ? `Your appointment with ${ownerName} on ${dateStr} is complete. Agreed amount: ${amountStr}. ${ownerName} will collect payment directly — reach out to them with any questions.`
+      : `Your appointment with ${ownerName} on ${dateStr} is complete. ${ownerName} will be in touch about payment.`;
+    await sendEmail({
+      to: visitorEmail,
+      subject: `Appointment complete — ${ownerName}`,
+      text: body,
+      html: smsBodyToHtml(body),
+    });
+  }
+
+  if (ownerEmail) {
+    const body = amountStr
+      ? `Appointment with ${meeting.visitor_name} on ${dateStr} is complete. Agreed amount: ${amountStr}. Collect payment directly from them.`
+      : `Appointment with ${meeting.visitor_name} on ${dateStr} is complete. Collect payment directly from them.`;
+    await sendEmail({
+      to: ownerEmail,
+      subject: `Appointment complete — ${meeting.visitor_name}`,
+      text: body,
+      html: smsBodyToHtml(body),
+    });
   }
 }

@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
       ends_at,
       payment_failure_notified_at: null,
       reminder_sent_at: null,
+      summary_sent_at: null,
     });
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';

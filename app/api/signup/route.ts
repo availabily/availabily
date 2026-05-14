@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     if (demoStore.getUserByPhone(phone)) {
       return NextResponse.json({ error: 'Phone number is already registered' }, { status: 409 });
     }
-    demoStore.createUser({ phone, email: email ?? null, handle, timezone, created_at: new Date().toISOString() });
+    demoStore.createUser({ phone, email: email ?? null, handle, timezone, payments_enabled: true, created_at: new Date().toISOString() });
     if (schedule) {
       const rules = Object.entries(schedule)
         .filter(([, day]) => day.enabled && day.start_time && day.end_time)

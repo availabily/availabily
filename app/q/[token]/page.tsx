@@ -12,7 +12,7 @@ export default async function QuotePage({
   const meeting = await getMeetingByQuoteToken(token);
   if (!meeting) notFound();
 
-  const [{ profile }, stripeStatus] = await Promise.all([
+  const [{ user, profile }, stripeStatus] = await Promise.all([
     getOwnerForMeeting(meeting),
     getAccountStatus(meeting.user_phone),
   ]);
@@ -22,6 +22,7 @@ export default async function QuotePage({
       meeting={meeting}
       ownerProfile={profile}
       stripeStatus={stripeStatus}
+      paymentsEnabled={user?.payments_enabled ?? true}
     />
   );
 }

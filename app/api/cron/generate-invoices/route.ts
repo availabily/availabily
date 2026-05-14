@@ -5,7 +5,7 @@ import { isDemo } from '@/lib/stripe';
 import { createInvoiceForMeeting } from '@/lib/stripe-invoices';
 import { ownerDisplayName } from '@/lib/owner-display';
 import { formatDollars, formatShortDay } from '@/lib/utils';
-import { sendEmail, smsBodyToHtml } from '@/lib/email';
+import { sendEmail, smsBodyToHtml, sendCompletionSummaryEmail } from '@/lib/email';
 import { Meeting, User, Profile } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
   const results = {
     completed: 0,
     invoiced: 0,
+    settled: 0,
     invoice_failures: [] as { meeting_id: string; error: string }[],
     reminded: 0,
   };
@@ -42,17 +43,45 @@ export async function GET(request: NextRequest) {
 
   results.completed = promoted?.length ?? 0;
 
-  // ── Phase B: completed → invoiced ─────────────────────────────────────────
+  // ── Phase B: completed → invoiced (or summary email for cash-only owners) ──
   const { data: toInvoice } = await supabase
     .from('meetings')
     .select('*')
     .eq('status', 'completed')
     .is('stripe_invoice_id', null)
+    .is('summary_sent_at', null)
     .gt('ends_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
     .limit(50);
 
   for (const row of toInvoice ?? []) {
     try {
+      const { data: ownerUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('phone', row.user_phone)
+        .single();
+
+      const paymentsEnabled = ownerUser?.payments_enabled ?? true;
+
+      if (!paymentsEnabled) {
+        const { data: ownerProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_phone', row.user_phone)
+          .maybeSingle();
+        await sendCompletionSummaryEmail({
+          meeting: row as Meeting,
+          ownerName: ownerDisplayName(ownerProfile, ownerUser!),
+          ownerEmail: ownerUser?.email ?? null,
+        });
+        await supabase
+          .from('meetings')
+          .update({ summary_sent_at: new Date().toISOString() })
+          .eq('id', row.id);
+        results.settled++;
+        continue;
+      }
+
       await createInvoiceForMeeting(row.id);
       results.invoiced++;
     } catch (err) {
@@ -119,6 +148,7 @@ async function runDemoCron(
   results: {
     completed: number;
     invoiced: number;
+    settled: number;
     invoice_failures: { meeting_id: string; error: string }[];
     reminded: number;
   }
@@ -143,10 +173,22 @@ async function runDemoCron(
 
   // Phase B — re-read after phase A mutations
   for (const m of demoStore.getAllMeetings()) {
-    if (m.status === 'completed' && m.stripe_invoice_id == null && m.ends_at) {
+    if (m.status === 'completed' && m.stripe_invoice_id == null && m.summary_sent_at == null && m.ends_at) {
       const endsAt = new Date(m.ends_at);
       if (endsAt > sevenDaysAgo) {
         try {
+          const owner = demoStore.getUserByPhone(m.user_phone);
+          if (!(owner?.payments_enabled ?? true)) {
+            const profile = demoStore.getProfile(m.user_phone);
+            await sendCompletionSummaryEmail({
+              meeting: m,
+              ownerName: ownerDisplayName(profile, owner!),
+              ownerEmail: owner?.email ?? null,
+            });
+            demoStore.updateMeeting(m.id, { summary_sent_at: new Date().toISOString() });
+            results.settled++;
+            continue;
+          }
           await createInvoiceForMeeting(m.id);
           results.invoiced++;
         } catch (err) {

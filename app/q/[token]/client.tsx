@@ -23,16 +23,18 @@ interface QuotePageClientProps {
   meeting: Meeting;
   ownerProfile: Profile | null;
   stripeStatus: StripeStatus | null;
+  paymentsEnabled: boolean;
 }
 
 type GateStep = 'profile' | 'connect' | 'verifying' | 'ready';
 
 function computeGateStep(
   profile: Profile | null,
-  stripe: StripeStatus | null
+  stripe: StripeStatus | null,
+  paymentsEnabled: boolean = true
 ): GateStep {
   if (!isProfileCompleteForQuoting(profile)) return 'profile';
-  if (!stripe?.charges_enabled) {
+  if (paymentsEnabled && !stripe?.charges_enabled) {
     if (stripe?.details_submitted) return 'verifying';
     return 'connect';
   }
@@ -226,18 +228,42 @@ function ProfileGate({
   );
 }
 
-function ConnectGate({ ownerPhone }: { ownerPhone: string }) {
+function ConnectGate({ ownerPhone, onSkipped }: { ownerPhone: string; onSkipped: () => void }) {
   const encodedPhone = encodeURIComponent(ownerPhone);
+  const [skipping, setSkipping] = useState(false);
+  const [skipError, setSkipError] = useState('');
+
+  async function handleSkip() {
+    setSkipping(true);
+    setSkipError('');
+    try {
+      const res = await fetch('/api/user/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: ownerPhone, payments_enabled: false }),
+      });
+      if (!res.ok) {
+        setSkipError('Could not save preference. Please try again.');
+        return;
+      }
+      onSkipped();
+    } catch {
+      setSkipError('Network error. Please try again.');
+    } finally {
+      setSkipping(false);
+    }
+  }
+
   return (
     <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6">
       <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.14em] mb-1">
         Quick setup — one time
       </p>
       <h2 className="font-display text-2xl font-bold text-slate-900 mb-2">
-        Set up payments to send this quote
+        How do you want to get paid?
       </h2>
       <p className="text-sm text-slate-500 mb-3">
-        We use Stripe to handle payments securely. Takes about 3 minutes and you only do this once. You&apos;ll return here automatically.
+        Connect Stripe to collect payment automatically after each appointment. Or skip if you handle payment yourself.
       </p>
       <p className="text-xs text-slate-400 mb-5">
         Stripe is the payment processor behind Shopify, Substack, and Lyft.
@@ -251,8 +277,18 @@ function ConnectGate({ ownerPhone }: { ownerPhone: string }) {
           'inline-flex items-center justify-center',
         )}
       >
-        Set up payments →
+        Accept payments through AM or PM? →
       </a>
+      <div className="mt-3 flex flex-col items-center gap-1">
+        <button
+          onClick={handleSkip}
+          disabled={skipping}
+          className="text-sm text-slate-400 hover:text-slate-600 underline underline-offset-2 disabled:opacity-50"
+        >
+          {skipping ? 'Saving…' : 'I collect payment separately'}
+        </button>
+        {skipError && <p className="text-xs text-red-500">{skipError}</p>}
+      </div>
     </div>
   );
 }
@@ -307,9 +343,11 @@ function VerifyingGate({
 
 function QuoteForm({
   meeting,
+  paymentsEnabled,
   onQuoted,
 }: {
   meeting: Meeting;
+  paymentsEnabled: boolean;
   onQuoted: (amountCents: number, description: string) => void;
 }) {
   const [amountInput, setAmountInput] = useState('');
@@ -375,8 +413,13 @@ function QuoteForm({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="quote-amount" className="text-sm font-medium text-slate-700">
-            Amount
+            {paymentsEnabled ? 'Amount' : 'Agreed amount'}
           </label>
+          {!paymentsEnabled && (
+            <p className="text-xs text-slate-400 -mt-0.5">
+              Shown to your customer — you collect payment directly.
+            </p>
+          )}
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold select-none">
               $
@@ -443,12 +486,14 @@ export function QuotePageClient({
   meeting: initialMeeting,
   ownerProfile: initialProfile,
   stripeStatus: initialStripe,
+  paymentsEnabled: initialPaymentsEnabled,
 }: QuotePageClientProps) {
   const [meeting, setMeeting] = useState<Meeting>(initialMeeting);
   const [profile, setProfile] = useState<Profile | null>(initialProfile);
   const [stripe, setStripe] = useState<StripeStatus | null>(initialStripe);
+  const [paymentsEnabled, setPaymentsEnabled] = useState<boolean>(initialPaymentsEnabled);
   const [gateStep, setGateStep] = useState<GateStep>(
-    () => computeGateStep(initialProfile, initialStripe)
+    () => computeGateStep(initialProfile, initialStripe, initialPaymentsEnabled)
   );
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -482,11 +527,16 @@ export function QuotePageClient({
 
   function handleProfileComplete(updated: Profile) {
     setProfile(updated);
-    const nextStep = computeGateStep(updated, stripe);
+    const nextStep = computeGateStep(updated, stripe, paymentsEnabled);
     setGateStep(nextStep);
   }
 
   function handleStripeReady() {
+    setGateStep('ready');
+  }
+
+  function handlePaymentSkip() {
+    setPaymentsEnabled(false);
     setGateStep('ready');
   }
 
@@ -545,7 +595,7 @@ export function QuotePageClient({
           )}
 
           {meeting.status === 'pending' && gateStep === 'connect' && (
-            <ConnectGate ownerPhone={meeting.user_phone} />
+            <ConnectGate ownerPhone={meeting.user_phone} onSkipped={handlePaymentSkip} />
           )}
 
           {meeting.status === 'pending' && gateStep === 'verifying' && (
@@ -555,6 +605,7 @@ export function QuotePageClient({
           {meeting.status === 'pending' && gateStep === 'ready' && (
             <QuoteForm
               meeting={meeting}
+              paymentsEnabled={paymentsEnabled}
               onQuoted={(amountCents, description) => {
                 setMeeting(prev => ({
                   ...prev,
@@ -613,7 +664,8 @@ export function QuotePageClient({
               </h2>
               {meeting.quote_amount_cents && (
                 <p className="text-sm text-slate-500 mt-2">
-                  {formatAmountCents(meeting.quote_amount_cents)} · invoice will be sent after the appointment
+                  {formatAmountCents(meeting.quote_amount_cents)} ·{' '}
+                  {paymentsEnabled ? 'invoice will be sent after the appointment' : 'payment collected separately'}
                 </p>
               )}
               <div className="mt-5 pt-4 border-t border-slate-100">

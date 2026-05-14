@@ -15,6 +15,7 @@ const users: User[] = [
     email: null,
     handle: DEMO_HANDLE,
     timezone: 'America/Los_Angeles',
+    payments_enabled: true,
     created_at: new Date().toISOString(),
   },
 ];
@@ -88,6 +89,13 @@ export const demoStore = {
 
   createUser(user: User): void {
     users.push(user);
+  },
+
+  updateUser(phone: string, data: Partial<User>): void {
+    const idx = users.findIndex(u => u.phone === phone);
+    if (idx !== -1) {
+      users[idx] = { ...users[idx], ...data };
+    }
   },
 
   getTimeRules(userPhone: string): TimeRule[] {
