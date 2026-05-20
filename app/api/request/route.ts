@@ -240,17 +240,24 @@ export async function POST(request: NextRequest) {
     `Manage: ${baseUrl}/q/${quote_token}`,
   ].filter(Boolean).join('\n');
 
-  try {
-    const ownerEmail: string | null = user.email ?? null;
-    if (!ownerEmail) {
-      console.warn('[email] owner email not set for user', user.phone);
-    } else {
+  // Send owner and visitor notifications independently so a failure in one
+  // never suppresses the other. The meeting is already created, so email
+  // failures are logged but don't fail the request.
+  const ownerEmail: string | null = user.email ?? null;
+  if (!ownerEmail) {
+    console.error('[email] owner notification skipped: no email on file for user', user.phone);
+  } else {
+    try {
       await sendEmail({ to: ownerEmail, subject: `New booking request from ${visitor_name}`, text: smsBody, html: smsBodyToHtml(smsBody) });
+    } catch (err) {
+      console.error(`[email] failed to send owner notification to ${ownerEmail}:`, err);
     }
+  }
+
+  try {
     await sendEmail({ to: visitor_email, subject: 'Booking request received', text: `Your request for ${formatShortDay(date)} at ${formatTime(start_time)} has been received. You'll hear back soon.`, html: smsBodyToHtml(`Your request for ${formatShortDay(date)} at ${formatTime(start_time)} has been received. You'll hear back soon.`) });
   } catch (err) {
-    console.error('Failed to send request email:', err);
-    // Still return success - meeting is created
+    console.error(`[email] failed to send visitor confirmation to ${visitor_email}:`, err);
   }
 
   return NextResponse.json({ success: true });

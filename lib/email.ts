@@ -23,7 +23,9 @@ export async function sendEmail(opts: {
   html?: string;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM ?? 'AM or PM? <bookings@amorpm.com>';
+  // Use `||` not `??`: a blank EMAIL_FROM env var must fall back to the default,
+  // otherwise Resend rejects every send for having an empty `from` address.
+  const from = process.env.EMAIL_FROM || 'AM or PM? <bookings@amorpm.com>';
   const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
   if (isDemo || !apiKey) {
