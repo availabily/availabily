@@ -10,6 +10,7 @@ const DISPLAY_DOMAIN = rawBase.replace(/^https?:\/\//, '').replace(/\/$/, '');
 function SuccessContent() {
   const searchParams = useSearchParams();
   const handle = searchParams.get('handle') || '';
+  const token = searchParams.get('token') || '';
   const shareableUrl = `${rawBase}/${handle}`;
   const displayUrl = `${DISPLAY_DOMAIN}/${handle}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareableUrl)}&margin=10&color=5b4cff&bgcolor=ffffff`;
@@ -100,6 +101,20 @@ function SuccessContent() {
           >
             View your page →
           </Link>
+
+          {token && (
+            <div className="border-t border-slate-100 pt-6">
+              <Link
+                href={`/account/${token}`}
+                className="block text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+              >
+                Edit your profile →
+              </Link>
+              <p className="text-xs text-slate-400 mt-2">
+                We also emailed you this link. Keep it private — anyone with it can edit your page.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </main>

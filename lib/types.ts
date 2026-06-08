@@ -4,6 +4,9 @@ export interface User {
   handle: string;
   timezone: string;
   payments_enabled: boolean;
+  // Secret token gating the /account/[token] profile editor. Nullable for
+  // backward compatibility with rows created before migration 009.
+  manage_token: string | null;
   created_at: string;
 }
 

@@ -16,6 +16,7 @@ const users: User[] = [
     handle: DEMO_HANDLE,
     timezone: 'America/Los_Angeles',
     payments_enabled: true,
+    manage_token: 'demo-account',
     created_at: new Date().toISOString(),
   },
 ];
@@ -85,6 +86,10 @@ export const demoStore = {
 
   getUserByPhone(phone: string): User | null {
     return users.find(u => u.phone === phone) ?? null;
+  },
+
+  getUserByManageToken(token: string): User | null {
+    return users.find(u => u.manage_token === token) ?? null;
   },
 
   createUser(user: User): void {

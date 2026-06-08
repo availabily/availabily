@@ -83,12 +83,12 @@ function hasProfileData(data: ProfileFormData): boolean {
 
 async function uploadImageFile(
   file: File,
-  handle: string,
+  token: string,
   imageType: 'avatar' | 'gallery'
 ): Promise<string | null> {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('handle', handle);
+  formData.append('token', token);
   formData.append('image_type', imageType);
   try {
     const res = await fetch('/api/upload', { method: 'POST', body: formData });
@@ -215,6 +215,9 @@ export function SignupForm() {
         return;
       }
 
+      // The secret token used to authorize uploads, profile writes, and later edits.
+      const manageToken: string = data.manage_token;
+
       // Step 2: Upload images to Supabase Storage (via /api/upload).
       // Must happen after user creation because profile_images.user_phone
       // has a FK to users.phone. In demo mode, uploads are kept in-memory.
@@ -222,7 +225,7 @@ export function SignupForm() {
       if (profileData.avatar_file) {
         const uploadedUrl = await uploadImageFile(
           profileData.avatar_file,
-          handle,
+          manageToken,
           'avatar'
         );
         if (uploadedUrl) finalAvatarUrl = uploadedUrl;
@@ -230,9 +233,10 @@ export function SignupForm() {
 
       const finalGalleryUrls: string[] = [];
       for (const file of profileData.gallery_files) {
+        if (!file) continue; // skip placeholders for pre-existing images
         const uploadedUrl = await uploadImageFile(
           file,
-          handle,
+          manageToken,
           'gallery'
         );
         if (uploadedUrl) finalGalleryUrls.push(uploadedUrl);
@@ -254,7 +258,7 @@ export function SignupForm() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            handle,
+            token: manageToken,
             display_name: profileData.display_name,
             business_name: profileData.business_name,
             headline: profileData.headline,
@@ -279,7 +283,9 @@ export function SignupForm() {
         }
       }
 
-      router.push(`/signup/success?handle=${handle}`);
+      router.push(
+        `/signup/success?handle=${encodeURIComponent(handle)}&token=${encodeURIComponent(manageToken)}`
+      );
     } catch {
       setError('Network error. Please try again.');
     } finally {

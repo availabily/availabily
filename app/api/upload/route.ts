@@ -10,14 +10,16 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const handle = formData.get('handle') as string | null;
+    // Secret manage_token — gates uploads to the owner that holds it, not the
+    // public handle (which anyone could supply to write into someone's gallery).
+    const token = formData.get('token') as string | null;
     const imageType = formData.get('image_type') as string | null;
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
-    if (!handle) {
-      return NextResponse.json({ error: 'handle is required' }, { status: 400 });
+    if (!token) {
+      return NextResponse.json({ error: 'token is required' }, { status: 400 });
     }
     if (!imageType || !['avatar', 'gallery'].includes(imageType)) {
       return NextResponse.json({ error: 'image_type must be avatar or gallery' }, { status: 400 });
@@ -34,8 +36,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (isDemo) {
-      const user = demoStore.getUserByHandle(handle);
-      if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      const user = demoStore.getUserByManageToken(token);
+      if (!user) return NextResponse.json({ error: 'Invalid edit link' }, { status: 404 });
       const phone = user.phone;
 
       // In demo mode, store as base64 data URL
@@ -70,11 +72,11 @@ export async function POST(request: NextRequest) {
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('phone')
-      .eq('handle', handle)
-      .single();
+      .eq('manage_token', token)
+      .maybeSingle();
 
     if (userError || !userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Invalid edit link' }, { status: 404 });
     }
     const phone = userData.phone;
 
