@@ -28,8 +28,11 @@ export interface ProfileFormData {
   gallery_urls: string[];
   // Actual File objects. The signup form uploads these to Supabase Storage
   // after the user is created, then persists the returned public URLs.
+  // gallery_files is index-aligned with gallery_urls: each entry is the File for
+  // a newly added image, or null for an already-saved image (used by the editor,
+  // which prefills gallery_urls with existing public URLs and null placeholders).
   avatar_file: File | null;
-  gallery_files: File[];
+  gallery_files: (File | null)[];
 }
 
 interface ProfileSetupSectionProps {

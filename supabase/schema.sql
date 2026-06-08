@@ -3,10 +3,12 @@ CREATE TABLE users (
   phone text PRIMARY KEY,
   handle text UNIQUE NOT NULL,
   timezone text NOT NULL DEFAULT 'America/Los_Angeles',
+  manage_token text UNIQUE,
   created_at timestamptz DEFAULT now()
 );
 
 CREATE INDEX users_handle_idx ON users(handle);
+CREATE INDEX users_manage_token_idx ON users(manage_token);
 
 -- Time rules table
 CREATE TABLE time_rules (

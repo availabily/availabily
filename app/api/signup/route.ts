@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
 import { nanoid } from 'nanoid';
 import { sendEmail, smsBodyToHtml } from '@/lib/email';
+import { generateToken } from '@/lib/tokens';
 import { isValidE164, toE164 } from '@/lib/utils';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
@@ -60,6 +61,14 @@ export async function POST(request: NextRequest) {
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://amorpm.com';
 
+  // Secret token that lets the owner edit their profile later (gates /account/[token]).
+  const manageToken = generateToken();
+
+  const welcomeEmailText = (handleValue: string, token: string) =>
+    `Your AM or PM? page is live: ${baseUrl}/${handleValue}\n\n` +
+    `Edit your profile anytime: ${baseUrl}/account/${token}\n` +
+    `Keep that link private — anyone with it can edit your page.`;
+
   // ── Demo mode: use in-memory store ──
   if (isDemo) {
     if (demoStore.getUserByHandle(handle)) {
@@ -68,7 +77,7 @@ export async function POST(request: NextRequest) {
     if (demoStore.getUserByPhone(phone)) {
       return NextResponse.json({ error: 'Phone number is already registered' }, { status: 409 });
     }
-    demoStore.createUser({ phone, email: email ?? null, handle, timezone, payments_enabled: true, created_at: new Date().toISOString() });
+    demoStore.createUser({ phone, email: email ?? null, handle, timezone, payments_enabled: true, manage_token: manageToken, created_at: new Date().toISOString() });
     if (schedule) {
       const rules = Object.entries(schedule)
         .filter(([, day]) => day.enabled && day.start_time && day.end_time)
@@ -83,9 +92,9 @@ export async function POST(request: NextRequest) {
         }));
       if (rules.length > 0) demoStore.createTimeRules(rules);
     }
-    const text = `Your AM or PM? page is live. ${baseUrl}/${handle}`;
+    const text = welcomeEmailText(handle, manageToken);
     await sendEmail({ to: email, subject: 'Your AM or PM? page is live', text, html: smsBodyToHtml(text) });
-    return NextResponse.json({ success: true, handle });
+    return NextResponse.json({ success: true, handle, manage_token: manageToken });
   }
 
   // ── Production: use Supabase ──
@@ -116,7 +125,7 @@ export async function POST(request: NextRequest) {
   // Create user
   const { error: userError } = await supabase
     .from('users')
-    .insert({ phone, handle, timezone, email });
+    .insert({ phone, handle, timezone, email, manage_token: manageToken });
 
   if (userError) {
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
@@ -149,12 +158,12 @@ export async function POST(request: NextRequest) {
 
   // Send welcome email
   try {
-    const text = `Your AM or PM? page is live. ${baseUrl}/${handle}`;
+    const text = welcomeEmailText(handle, manageToken);
     await sendEmail({ to: email, subject: 'Your AM or PM? page is live', text, html: smsBodyToHtml(text) });
   } catch (err) {
     console.error('Failed to send welcome email:', err);
     // Don't fail the signup if email fails
   }
 
-  return NextResponse.json({ success: true, handle });
+  return NextResponse.json({ success: true, handle, manage_token: manageToken });
 }

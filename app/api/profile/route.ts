@@ -6,8 +6,12 @@ import { Profile, PromptBlock } from '@/lib/types';
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 interface ProfileBody {
+  // Owner is resolved from the secret manage_token (preferred, used by the
+  // /account editor and signup) or from phone (server-trusted contexts like the
+  // quote flow). The public handle is intentionally NOT accepted here — it would
+  // let anyone overwrite a profile they don't own.
+  token?: string;
   phone?: string;
-  handle?: string;
   display_name?: string;
   business_name?: string;
   headline?: string;
@@ -21,8 +25,8 @@ interface ProfileBody {
 }
 
 function validateProfile(body: ProfileBody): string | null {
-  if (!body.phone && !body.handle) {
-    return 'Either phone or handle is required';
+  if (!body.phone && !body.token) {
+    return 'Either token or phone is required';
   }
   if (body.bio && body.bio.length > 300) {
     return 'Bio must be 300 characters or fewer';
@@ -75,17 +79,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
-  // Resolve phone from handle when caller supplies handle instead of phone
+  // Resolve phone from the secret manage_token when the caller supplies a token.
+  // This is what authorizes an edit: only someone holding the token can write.
   let resolvedPhone = body.phone ?? '';
-  if (!resolvedPhone && body.handle) {
+  if (body.token) {
     if (isDemo) {
-      const u = demoStore.getUserByHandle(body.handle);
-      if (!u) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      const u = demoStore.getUserByManageToken(body.token);
+      if (!u) return NextResponse.json({ error: 'Invalid edit link' }, { status: 404 });
       resolvedPhone = u.phone;
     } else {
       const sb = createServerClient();
-      const { data: u } = await sb.from('users').select('phone').eq('handle', body.handle).single();
-      if (!u) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      const { data: u } = await sb.from('users').select('phone').eq('manage_token', body.token).maybeSingle();
+      if (!u) return NextResponse.json({ error: 'Invalid edit link' }, { status: 404 });
       resolvedPhone = u.phone;
     }
   }
@@ -115,8 +120,8 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServerClient();
 
-  // Verify user exists (skip if we already looked up via handle above)
-  if (body.phone && !body.handle) {
+  // Verify user exists (skip if we already resolved via token above)
+  if (body.phone && !body.token) {
     const { data: user } = await supabase
       .from('users')
       .select('phone')
