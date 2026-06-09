@@ -1,4 +1,6 @@
 import { SignupForm } from '@/components/signup-form';
+import { SponsoredBanner } from '@/components/sponsored-banner';
+import { ExampleProfile } from '@/components/example-profile';
 import { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -75,6 +77,9 @@ export default function HomePage() {
         </p>
       </section>
 
+      {/* Featured pros — moving banner */}
+      <SponsoredBanner />
+
       {/* How it works */}
       <section className="px-6 pb-20 max-w-4xl mx-auto">
         <h2 className="text-center text-sm font-semibold uppercase tracking-wider text-slate-400 mb-10">
@@ -102,6 +107,9 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* Example profile preview */}
+      <ExampleProfile />
 
       {/* Signup form */}
       <section id="signup" className="px-6 pb-20 max-w-xl mx-auto scroll-mt-8">

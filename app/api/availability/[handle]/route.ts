@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
-import { computeAvailability } from '@/lib/scheduling';
+import { computeAvailability, ALLOWED_DURATIONS, DEFAULT_DURATION } from '@/lib/scheduling';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ handle: string }> }
 ) {
   const { handle } = await params;
+
+  // Duration-aware availability: validate ?duration= against the allowed set.
+  const rawDuration = Number(request.nextUrl.searchParams.get('duration'));
+  const durationMinutes = ALLOWED_DURATIONS.includes(rawDuration)
+    ? rawDuration
+    : DEFAULT_DURATION;
 
   // ── Demo mode: use in-memory store ──
   if (isDemo) {
@@ -27,8 +33,8 @@ export async function GET(
       thirtyDaysAgo.toISOString().split('T')[0],
       fourteenDaysFromNow.toISOString().split('T')[0]
     );
-    const days = computeAvailability(rules, meetings, user.timezone);
-    return NextResponse.json({ handle: user.handle, timezone: user.timezone, days });
+    const days = computeAvailability(rules, meetings, user.timezone, durationMinutes);
+    return NextResponse.json({ handle: user.handle, timezone: user.timezone, duration: durationMinutes, days });
   }
 
   // ── Production: use Supabase ──
@@ -72,11 +78,12 @@ export async function GET(
     return NextResponse.json({ error: 'Failed to fetch meetings' }, { status: 500 });
   }
 
-  const days = computeAvailability(rules || [], meetings || [], user.timezone);
+  const days = computeAvailability(rules || [], meetings || [], user.timezone, durationMinutes);
 
   return NextResponse.json({
     handle: user.handle,
     timezone: user.timezone,
+    duration: durationMinutes,
     days,
   });
 }

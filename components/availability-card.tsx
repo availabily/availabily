@@ -3,6 +3,8 @@
 import { DayAvailability } from '@/lib/types';
 import { DaySelector } from '@/components/day-selector';
 import { TimeSlotGrid } from '@/components/time-slot-grid';
+import { ALLOWED_DURATIONS } from '@/lib/scheduling';
+import { formatDuration } from '@/lib/utils';
 import { cn } from '@/lib/cn';
 
 interface AvailabilityCardProps {
@@ -11,6 +13,8 @@ interface AvailabilityCardProps {
   onSelectDate: (date: string) => void;
   selectedSlot: string | null;
   onSelectSlot: (startTime: string) => void;
+  duration: number;
+  onChangeDuration: (duration: number) => void;
   className?: string;
 }
 
@@ -20,6 +24,8 @@ export function AvailabilityCard({
   onSelectDate,
   selectedSlot,
   onSelectSlot,
+  duration,
+  onChangeDuration,
   className,
 }: AvailabilityCardProps) {
   const selectedDay = days.find(d => d.date === selectedDate);
@@ -37,6 +43,25 @@ export function AvailabilityCard({
           Availability
         </p>
         <h2 className="font-display text-2xl font-bold text-slate-900">Pick a time</h2>
+      </div>
+
+      {/* Duration selector — drives which start times can fit */}
+      <div className="mb-5">
+        <label htmlFor="booking-duration" className="text-sm font-medium text-slate-700 block mb-1.5">
+          How long do you need?
+        </label>
+        <select
+          id="booking-duration"
+          value={duration}
+          onChange={(e) => onChangeDuration(Number(e.target.value))}
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm"
+        >
+          {ALLOWED_DURATIONS.map((minutes) => (
+            <option key={minutes} value={minutes}>
+              {formatDuration(minutes)}
+            </option>
+          ))}
+        </select>
       </div>
 
       {days.length === 0 ? (

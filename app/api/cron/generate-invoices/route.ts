@@ -44,13 +44,17 @@ export async function GET(request: NextRequest) {
   results.completed = promoted?.length ?? 0;
 
   // ── Phase B: completed → invoiced (or summary email for cash-only owners) ──
+  // The lower bound MUST match Phase A's 30-day window. If Phase B were tighter
+  // (e.g. 7 days), any meeting Phase A promotes to `completed` whose event ended
+  // 8-30 days ago would be stranded in `completed` and the customer would never
+  // receive an invoice / summary — which happens whenever the cron misses runs.
   const { data: toInvoice } = await supabase
     .from('meetings')
     .select('*')
     .eq('status', 'completed')
     .is('stripe_invoice_id', null)
     .is('summary_sent_at', null)
-    .gt('ends_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+    .gt('ends_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
     .limit(50);
 
   for (const row of toInvoice ?? []) {
@@ -155,7 +159,6 @@ async function runDemoCron(
 ) {
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
   const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
@@ -175,7 +178,8 @@ async function runDemoCron(
   for (const m of demoStore.getAllMeetings()) {
     if (m.status === 'completed' && m.stripe_invoice_id == null && m.summary_sent_at == null && m.ends_at) {
       const endsAt = new Date(m.ends_at);
-      if (endsAt > sevenDaysAgo) {
+      // Window MUST match Phase A (30 days) so completed meetings are never stranded.
+      if (endsAt > thirtyDaysAgo) {
         try {
           const owner = demoStore.getUserByPhone(m.user_phone);
           if (!(owner?.payments_enabled ?? true)) {

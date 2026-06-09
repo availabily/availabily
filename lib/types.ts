@@ -28,6 +28,7 @@ export interface Meeting {
   meeting_date: string;
   start_time: string;
   end_time: string;
+  duration_minutes: number;
   visitor_name: string;
   visitor_phone: string;
   visitor_email: string | null;
@@ -92,6 +93,7 @@ export interface DayAvailability {
 export interface AvailabilityResponse {
   handle: string;
   timezone: string;
+  duration?: number;
   days: DayAvailability[];
 }
 

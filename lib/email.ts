@@ -16,11 +16,17 @@ export function smsBodyToHtml(text: string): string {
     .join('');
 }
 
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer | string; // Buffer or base64-encoded string
+}
+
 export async function sendEmail(opts: {
   to: string;
   subject: string;
   text: string;
   html?: string;
+  attachments?: EmailAttachment[];
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   // Use `||` not `??`: a blank EMAIL_FROM env var must fall back to the default,
@@ -32,7 +38,11 @@ export async function sendEmail(opts: {
     console.log('\n📧 [Email] Would send:');
     console.log(`  To: ${opts.to}`);
     console.log(`  Subject: ${opts.subject}`);
-    console.log(`  Body:\n${opts.text.split('\n').map(l => `    ${l}`).join('\n')}\n`);
+    console.log(`  Body:\n${opts.text.split('\n').map(l => `    ${l}`).join('\n')}`);
+    if (opts.attachments?.length) {
+      console.log(`  Attachments: ${opts.attachments.map(a => a.filename).join(', ')}`);
+    }
+    console.log('');
     return;
   }
 
@@ -44,6 +54,7 @@ export async function sendEmail(opts: {
     subject: opts.subject,
     text: opts.text,
     ...(opts.html ? { html: opts.html } : {}),
+    ...(opts.attachments?.length ? { attachments: opts.attachments } : {}),
   });
 
   if (error) {
@@ -65,14 +76,25 @@ export async function sendCompletionSummaryEmail(opts: {
   const amountStr = meeting.quote_amount_cents
     ? `$${(meeting.quote_amount_cents / 100).toFixed(2)}`
     : null;
+  // Cash invoices have no Stripe number; use a stable reference from the meeting id.
+  const invoiceRef = `CASH-${meeting.id.replace(/\W/g, '').slice(0, 8).toUpperCase()}`;
 
   if (visitorEmail) {
     const body = amountStr
-      ? `Your appointment with ${ownerName} on ${dateStr} is complete. Agreed amount: ${amountStr}. ${ownerName} will collect payment directly — reach out to them with any questions.`
-      : `Your appointment with ${ownerName} on ${dateStr} is complete. ${ownerName} will be in touch about payment.`;
+      ? [
+          `Invoice ${invoiceRef} for your ${dateStr} appointment with ${ownerName}.`,
+          `Amount due: ${amountStr}`,
+          `Payment method: Cash (collected in person)`,
+          `${ownerName} collects payment directly — reach out to them with any questions.`,
+        ].join('\n')
+      : [
+          `Invoice ${invoiceRef} for your ${dateStr} appointment with ${ownerName}.`,
+          `Payment method: Cash (collected in person)`,
+          `${ownerName} will be in touch about the amount due.`,
+        ].join('\n');
     await sendEmail({
       to: visitorEmail,
-      subject: `Appointment complete — ${ownerName}`,
+      subject: `Invoice ${invoiceRef} — ${ownerName}`,
       text: body,
       html: smsBodyToHtml(body),
     });
@@ -80,11 +102,18 @@ export async function sendCompletionSummaryEmail(opts: {
 
   if (ownerEmail) {
     const body = amountStr
-      ? `Appointment with ${meeting.visitor_name} on ${dateStr} is complete. Agreed amount: ${amountStr}. Collect payment directly from them.`
-      : `Appointment with ${meeting.visitor_name} on ${dateStr} is complete. Collect payment directly from them.`;
+      ? [
+          `Invoice ${invoiceRef} — appointment with ${meeting.visitor_name} on ${dateStr} is complete.`,
+          `Amount due: ${amountStr}`,
+          `Payment method: Cash (collect in person)`,
+        ].join('\n')
+      : [
+          `Invoice ${invoiceRef} — appointment with ${meeting.visitor_name} on ${dateStr} is complete.`,
+          `Payment method: Cash (collect in person)`,
+        ].join('\n');
     await sendEmail({
       to: ownerEmail,
-      subject: `Appointment complete — ${meeting.visitor_name}`,
+      subject: `Invoice ${invoiceRef} — ${meeting.visitor_name} (cash)`,
       text: body,
       html: smsBodyToHtml(body),
     });

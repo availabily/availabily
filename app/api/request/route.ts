@@ -3,8 +3,8 @@ import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
 
 import { sendEmail, smsBodyToHtml } from '@/lib/email';
-import { isSlotAvailable } from '@/lib/scheduling';
-import { isValidE164, toE164, formatPhone, formatTime, formatShortDay, computeEndsAt } from '@/lib/utils';
+import { isSlotAvailable, ALLOWED_DURATIONS, DEFAULT_DURATION } from '@/lib/scheduling';
+import { isValidE164, toE164, formatPhone, formatTime, formatShortDay, computeEndsAt, addMinutesToTime } from '@/lib/utils';
 import { generateToken } from '@/lib/tokens';
 
 const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
@@ -17,6 +17,7 @@ interface RequestBody {
   visitor_email: string;
   visitor_phone?: string;
   visitor_address?: string;
+  duration_minutes?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -32,6 +33,11 @@ export async function POST(request: NextRequest) {
   if (!handle || !date || !start_time || !visitor_name || !visitor_email) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
+
+  // Validate the requested duration against the allowed set (default 60).
+  const duration_minutes = ALLOWED_DURATIONS.includes(Number(body.duration_minutes))
+    ? Number(body.duration_minutes)
+    : DEFAULT_DURATION;
 
   // Validate visitor email
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(visitor_email)) {
@@ -74,12 +80,11 @@ export async function POST(request: NextRequest) {
 
     const rules = demoStore.getTimeRules(user.phone);
     const meetings = demoStore.getMeetingsByDate(user.phone, date);
-    if (!isSlotAvailable(date, start_time, rules, meetings, user.timezone)) {
+    if (!isSlotAvailable(date, start_time, rules, meetings, user.timezone, duration_minutes)) {
       return NextResponse.json({ error: 'This time slot is no longer available' }, { status: 409 });
     }
 
-    const [h, m] = start_time.split(':').map(Number);
-    const end_time = `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    const end_time = addMinutesToTime(start_time, duration_minutes);
     const quote_token = generateToken();
     const accept_token = generateToken();
     const manage_token = generateToken();
@@ -92,6 +97,7 @@ export async function POST(request: NextRequest) {
       meeting_date: date,
       start_time,
       end_time,
+      duration_minutes,
       visitor_name,
       visitor_phone: visitor_phone ?? '',
       visitor_email: visitor_email ?? null,
@@ -182,23 +188,22 @@ export async function POST(request: NextRequest) {
     .eq('user_phone', user.phone)
     .eq('meeting_date', date);
 
-  // Validate slot is available
+  // Validate slot is available for the requested duration
   const available = isSlotAvailable(
     date,
     start_time,
     rules || [],
     meetings || [],
-    user.timezone
+    user.timezone,
+    duration_minutes
   );
 
   if (!available) {
     return NextResponse.json({ error: 'This time slot is no longer available' }, { status: 409 });
   }
 
-  // Calculate end time (1 hour later)
-  const [h, m] = start_time.split(':').map(Number);
-  const endH = h + 1;
-  const end_time = `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  // Calculate end time from the requested duration
+  const end_time = addMinutesToTime(start_time, duration_minutes);
 
   // Generate tokens
   const quote_token = generateToken();
@@ -214,6 +219,7 @@ export async function POST(request: NextRequest) {
       meeting_date: date,
       start_time,
       end_time,
+      duration_minutes,
       visitor_name,
       visitor_email,
       visitor_phone: visitor_phone ?? null,

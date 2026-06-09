@@ -1,12 +1,30 @@
 import { TimeRule, Meeting, TimeSlot, DayAvailability } from './types';
 import { getNext14Days, getCurrentTimeInTz, getCurrentDateInTz } from './utils';
 
+/** Granularity (minutes) for generating candidate booking start times. */
+export const SLOT_GRANULARITY = 30;
+
+/** Selectable booking durations in minutes: 30m, 1h, 1.5h, 2h, 3h, 4h, 6h, 8h. */
+export const ALLOWED_DURATIONS = [30, 60, 90, 120, 180, 240, 360, 480];
+
+/** Default booking duration when none is supplied (preserves legacy 1h behavior). */
+export const DEFAULT_DURATION = 60;
+
 /**
  * Parse "HH:MM" time string into minutes since midnight
  */
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number);
   return h * 60 + m;
+}
+
+/**
+ * Format minutes since midnight into a "HH:MM" string.
+ */
+function minutesToTime(total: number): string {
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
 /**
@@ -33,24 +51,28 @@ function getDayOfWeek(dateStr: string): number {
 }
 
 /**
- * Expand a time range into 60-minute slots
+ * Expand an available time range into candidate booking slots of a given
+ * duration, stepping by `granularity`. A slot is only produced when the full
+ * duration fits inside this single range (`current + durationMinutes <= end`),
+ * so a booking never spans two disjoint available windows and `end_time` never
+ * overflows past the range end (guaranteeing it stays <= "23:59").
  */
-function expandToSlots(startTime: string, endTime: string): TimeSlot[] {
+function expandToSlots(
+  startTime: string,
+  endTime: string,
+  durationMinutes: number,
+  granularity: number = SLOT_GRANULARITY
+): TimeSlot[] {
   const slots: TimeSlot[] = [];
   let current = timeToMinutes(startTime);
   const end = timeToMinutes(endTime);
 
-  while (current + 60 <= end) {
-    const startH = Math.floor(current / 60);
-    const startM = current % 60;
-    const endH = Math.floor((current + 60) / 60);
-    const endM = (current + 60) % 60;
-
+  while (current + durationMinutes <= end) {
     slots.push({
-      start_time: `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`,
-      end_time: `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`,
+      start_time: minutesToTime(current),
+      end_time: minutesToTime(current + durationMinutes),
     });
-    current += 60;
+    current += granularity;
   }
 
   return slots;
@@ -64,6 +86,7 @@ export function computeSlotsForDate(
   rules: TimeRule[],
   meetings: Meeting[],
   timezone: string,
+  durationMinutes: number = DEFAULT_DURATION,
   currentDateStr?: string,
   currentTimeStr?: string
 ): TimeSlot[] {
@@ -79,23 +102,17 @@ export function computeSlotsForDate(
     }
   });
 
-  // Step 2: Expand available rules into slots
+  // Step 2: Expand available rules into duration-sized candidate slots
   let slots: TimeSlot[] = [];
   for (const rule of availableRules) {
-    slots.push(...expandToSlots(rule.start_time, rule.end_time));
+    slots.push(...expandToSlots(rule.start_time, rule.end_time, durationMinutes));
   }
 
-  // Remove duplicate slots
-  const slotSet = new Set(slots.map(s => s.start_time));
-  slots = Array.from(slotSet).sort().map(start => {
-    const [h, m] = start.split(':').map(Number);
-    const endH = Math.floor((h * 60 + m + 60) / 60);
-    const endM = (h * 60 + m + 60) % 60;
-    return {
-      start_time: start,
-      end_time: `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`,
-    };
-  });
+  // Dedup by start_time (preserving each slot's real end_time) and sort
+  const seen = new Set<string>();
+  slots = slots
+    .filter(s => (seen.has(s.start_time) ? false : (seen.add(s.start_time), true)))
+    .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
   // Step 3: Remove slots that fall within any blocked time_rule for that day
   const blockedRules = rules.filter(rule => {
@@ -155,7 +172,8 @@ export function computeSlotsForDate(
 export function computeAvailability(
   rules: TimeRule[],
   meetings: Meeting[],
-  timezone: string
+  timezone: string,
+  durationMinutes: number = DEFAULT_DURATION
 ): DayAvailability[] {
   const days = getNext14Days(timezone);
   const currentDateStr = getCurrentDateInTz(timezone);
@@ -169,6 +187,7 @@ export function computeAvailability(
       rules,
       meetings,
       timezone,
+      durationMinutes,
       currentDateStr,
       currentTimeStr
     );
@@ -194,8 +213,9 @@ export function isSlotAvailable(
   startTime: string,
   rules: TimeRule[],
   meetings: Meeting[],
-  timezone: string
+  timezone: string,
+  durationMinutes: number = DEFAULT_DURATION
 ): boolean {
-  const slots = computeSlotsForDate(dateStr, rules, meetings, timezone);
+  const slots = computeSlotsForDate(dateStr, rules, meetings, timezone, durationMinutes);
   return slots.some(s => s.start_time === startTime);
 }

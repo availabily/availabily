@@ -17,33 +17,55 @@ export async function getOrCreateConnectedCustomer(params: {
   ownerPhone: string;
   ownerName: string;
   visitorName: string;
-  visitorPhone: string;
-  visitorEmail?: string;
+  visitorPhone?: string | null;
+  visitorEmail?: string | null;
+  // Stable per-meeting key used to dedup/idempotency when the visitor has
+  // neither a phone nor an email (e.g. legacy bookings).
+  fallbackKey: string;
 }): Promise<string> {
+  const phone = params.visitorPhone?.trim() || '';
+  const email = params.visitorEmail?.trim() || '';
+  // Phone is OPTIONAL on the booking form, but email is required — so identify
+  // the Stripe customer by phone when present, otherwise by email. Falling back
+  // to the meeting id guarantees a unique idempotency key (never collide two
+  // distinct phoneless/emailless customers onto the same Stripe customer).
+  const idKey = phone || email || params.fallbackKey;
+
   if (isDemo) {
-    return `cus_demo_${params.visitorPhone.replace(/\D/g, '')}`;
+    return `cus_demo_${idKey.replace(/\W/g, '').toLowerCase()}`;
   }
 
   const stripe = getStripe();
-  const { data: existing } = await stripe.customers.search(
-    { query: `metadata['visitor_phone']:'${params.visitorPhone}'` },
-    { stripeAccount: params.ownerStripeAccountId }
-  );
-  if (existing.length > 0) return existing[0].id;
+
+  // Reuse an existing customer if we can match on a stable identifier.
+  if (phone) {
+    const { data } = await stripe.customers.search(
+      { query: `metadata['visitor_phone']:'${phone}'` },
+      { stripeAccount: params.ownerStripeAccountId }
+    );
+    if (data.length > 0) return data[0].id;
+  } else if (email) {
+    const { data } = await stripe.customers.search(
+      { query: `metadata['visitor_email']:'${email}'` },
+      { stripeAccount: params.ownerStripeAccountId }
+    );
+    if (data.length > 0) return data[0].id;
+  }
 
   const customer = await stripe.customers.create(
     {
       name: params.visitorName,
-      phone: params.visitorPhone,
-      email: params.visitorEmail || undefined,
+      ...(phone ? { phone } : {}),
+      ...(email ? { email } : {}),
       metadata: {
-        visitor_phone: params.visitorPhone,
+        ...(phone ? { visitor_phone: phone } : {}),
+        ...(email ? { visitor_email: email } : {}),
         platform_owner_phone: params.ownerPhone,
       },
     },
     {
       stripeAccount: params.ownerStripeAccountId,
-      idempotencyKey: `customer-${params.ownerPhone}-${params.visitorPhone}`,
+      idempotencyKey: `customer-${params.ownerPhone}-${idKey}`,
     }
   );
   return customer.id;
@@ -54,15 +76,17 @@ export async function sendInvoiceEmails(
   profile: Profile | null,
   user: User,
   hosted_url: string,
-  amount_cents: number
+  amount_cents: number,
+  invoiceNumber?: string | null
 ): Promise<void> {
   const ownerName = ownerDisplayName(profile, user);
   const amount = formatDollars(amount_cents);
   const shortDate = formatShortDay(meeting.meeting_date);
   const time = formatTime(meeting.start_time);
+  const invoiceRef = invoiceNumber ? ` (Invoice #${invoiceNumber})` : '';
 
-  const customerText = `${ownerName} sent you an invoice for ${shortDate} ${time}: $${amount}. Pay here: ${hosted_url}`;
-  const ownerText = `Invoice sent to ${meeting.visitor_name} for $${amount}. You'll get paid out to your bank within 2 business days after they pay.`;
+  const customerText = `${ownerName} sent you an invoice for ${shortDate} ${time}: $${amount}${invoiceRef}. Payment method: Stripe (pay online). Pay here: ${hosted_url}`;
+  const ownerText = `Invoice${invoiceRef} sent to ${meeting.visitor_name} for $${amount}. You'll get paid out to your bank within 2 business days after they pay.`;
 
   const visitorEmail: string | null = meeting.visitor_email ?? null;
   const ownerEmail: string | null = user.email ?? null;
@@ -169,6 +193,8 @@ export async function createInvoiceForMeeting(meetingId: string): Promise<{
       ownerName: ownerDisplayName(profile, user),
       visitorName: meeting.visitor_name,
       visitorPhone: meeting.visitor_phone,
+      visitorEmail: meeting.visitor_email,
+      fallbackKey: meetingId,
     });
   } catch (err) {
     await revertToCompleted(meetingId);
@@ -206,6 +232,7 @@ export async function createInvoiceForMeeting(meetingId: string): Promise<{
   // ── Step 9: Demo short-circuit ────────────────────────────────────────────
   if (isDemo) {
     const invoiceId = `in_demo_${meetingId}`;
+    const invoiceNumber = `DEMO-${meetingId.replace(/\W/g, '').slice(0, 8).toUpperCase()}`;
     const hostedUrl = `${baseUrl}/demo/invoice/${meetingId}`;
     const now = new Date().toISOString();
     demoStore.updateMeeting(meetingId, {
@@ -218,7 +245,8 @@ export async function createInvoiceForMeeting(meetingId: string): Promise<{
       profile,
       user,
       hostedUrl,
-      meeting.quote_amount_cents ?? 0
+      meeting.quote_amount_cents ?? 0,
+      invoiceNumber
     );
     return {
       invoice_id: invoiceId,
@@ -291,13 +319,14 @@ export async function createInvoiceForMeeting(meetingId: string): Promise<{
       })
       .eq('id', meetingId);
 
-    // Step 11: SMS
+    // Step 11: email the hosted invoice (with its Stripe invoice number)
     await sendInvoiceEmails(
       meeting,
       profile,
       user,
       hostedUrl,
-      meeting.quote_amount_cents ?? 0
+      meeting.quote_amount_cents ?? 0,
+      finalized.number
     );
 
     return {

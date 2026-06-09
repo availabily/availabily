@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { demoStore } from '@/lib/demo-store';
 import { nanoid } from 'nanoid';
-import { sendEmail, smsBodyToHtml } from '@/lib/email';
+import QRCode from 'qrcode';
+import { sendEmail, smsBodyToHtml, type EmailAttachment } from '@/lib/email';
 import { generateToken } from '@/lib/tokens';
 import { isValidE164, toE164 } from '@/lib/utils';
 
@@ -66,8 +67,23 @@ export async function POST(request: NextRequest) {
 
   const welcomeEmailText = (handleValue: string, token: string) =>
     `Your AM or PM? page is live: ${baseUrl}/${handleValue}\n\n` +
+    `Scan or share the attached QR code to send people straight to your page.\n\n` +
     `Edit your profile anytime: ${baseUrl}/account/${token}\n` +
     `Keep that link private — anyone with it can edit your page.`;
+
+  // Generate a QR code for the public profile URL to attach to the welcome email.
+  async function buildProfileQrAttachment(handleValue: string): Promise<EmailAttachment | null> {
+    try {
+      const content = await QRCode.toBuffer(`${baseUrl}/${handleValue}`, {
+        width: 512,
+        margin: 2,
+      });
+      return { filename: `${handleValue}-qr.png`, content };
+    } catch (err) {
+      console.error('Failed to generate profile QR code:', err);
+      return null;
+    }
+  }
 
   // ── Demo mode: use in-memory store ──
   if (isDemo) {
@@ -93,7 +109,8 @@ export async function POST(request: NextRequest) {
       if (rules.length > 0) demoStore.createTimeRules(rules);
     }
     const text = welcomeEmailText(handle, manageToken);
-    await sendEmail({ to: email, subject: 'Your AM or PM? page is live', text, html: smsBodyToHtml(text) });
+    const qr = await buildProfileQrAttachment(handle);
+    await sendEmail({ to: email, subject: 'Your AM or PM? page is live', text, html: smsBodyToHtml(text), ...(qr ? { attachments: [qr] } : {}) });
     return NextResponse.json({ success: true, handle, manage_token: manageToken });
   }
 
@@ -156,10 +173,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Send welcome email
+  // Send welcome email (with the profile QR code attached)
   try {
     const text = welcomeEmailText(handle, manageToken);
-    await sendEmail({ to: email, subject: 'Your AM or PM? page is live', text, html: smsBodyToHtml(text) });
+    const qr = await buildProfileQrAttachment(handle);
+    await sendEmail({ to: email, subject: 'Your AM or PM? page is live', text, html: smsBodyToHtml(text), ...(qr ? { attachments: [qr] } : {}) });
   } catch (err) {
     console.error('Failed to send welcome email:', err);
     // Don't fail the signup if email fails

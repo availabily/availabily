@@ -176,7 +176,13 @@ curl -X GET http://localhost:3000/api/cron/generate-invoices \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 
-The cron runs automatically every 15 minutes on Vercel (configured in `vercel.json`).
+The cron runs automatically once a day at 09:00 UTC on Vercel (`"0 9 * * *"` in
+`vercel.json`). A customer's invoice / cash summary is sent on the first daily run
+after the appointment's end time passes (up to ~24h later). It requires
+`CRON_SECRET` to be set in the Vercel project — Vercel attaches it as the
+`Authorization: Bearer` header automatically; if it is unset, every cron call
+returns 401 and no invoices are ever sent. The Hobby plan only allows daily crons;
+on Pro you can lower the latency (e.g. `"0 * * * *"` hourly).
 
 ### Application fee
 

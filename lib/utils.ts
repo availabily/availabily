@@ -34,6 +34,31 @@ export function formatTime(time: string): string {
 }
 
 /**
+ * Add minutes to a "HH:MM" time string, returning a new "HH:MM" string.
+ * e.g. addMinutesToTime('09:30', 120) -> '11:30'
+ * Callers must ensure the result stays within the same day (<= 23:59); the
+ * scheduling engine guarantees this by only generating starts that fit.
+ */
+export function addMinutesToTime(time: string, minutes: number): string {
+  const [h, m] = time.split(':').map(Number);
+  const total = h * 60 + m + minutes;
+  const hh = Math.floor(total / 60);
+  const mm = total % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
+/**
+ * Format a duration in minutes to a human label.
+ * e.g. 30 -> "30 min", 60 -> "1 hr", 90 -> "1.5 hr", 480 -> "8 hr"
+ */
+export function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = minutes / 60;
+  const label = Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
+  return `${label} hr`;
+}
+
+/**
  * Format a date string "YYYY-MM-DD" to a short day name "Mon"
  */
 export function formatShortDay(dateStr: string): string {

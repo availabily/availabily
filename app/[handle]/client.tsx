@@ -9,6 +9,7 @@ import { LockInForm } from '@/components/lock-in-form';
 import { RequestSentState } from '@/components/request-sent-state';
 import { StickyBookingCTA } from '@/components/sticky-booking-cta';
 import { AvailabilityResponse, Profile } from '@/lib/types';
+import { DEFAULT_DURATION } from '@/lib/scheduling';
 import Link from 'next/link';
 
 interface AvailabilityPageClientProps {
@@ -27,25 +28,20 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [duration, setDuration] = useState<number>(DEFAULT_DURATION);
   const [errorMessage, setErrorMessage] = useState('');
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const bookingRef = useRef<HTMLDivElement>(null);
+  // Monotonic id to ignore out-of-order availability responses when the user
+  // changes the duration rapidly.
+  const availReqRef = useRef(0);
 
-  // Fetch availability + profile in parallel
+  // Fetch the profile once on mount (independent of duration).
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/availability/${handle}`)
-        .then(res => {
-          if (!res.ok) throw new Error('Not found');
-          return res.json() as Promise<AvailabilityResponse>;
-        }),
-      fetch(`/api/profile/${handle}`)
-        .then(res => res.json() as Promise<ProfileResponse>)
-        .catch(() => ({ profile: null })),
-    ])
-      .then(([availData, profileData]) => {
-        setAvailability(availData);
+    fetch(`/api/profile/${handle}`)
+      .then(res => res.json() as Promise<ProfileResponse>)
+      .then(profileData => {
         if (profileData.profile) {
           setProfile({
             user_phone: '',
@@ -55,16 +51,38 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
             prompt_blocks: profileData.profile.prompt_blocks ?? [],
           } as Profile);
         }
-        if (availData.days.length > 0) {
-          setSelectedDate(availData.days[0].date);
-        }
-        setPageState('select-time');
+      })
+      .catch(() => { /* profile is optional */ });
+  }, [handle]);
+
+  // Fetch availability on mount and whenever the selected duration changes.
+  useEffect(() => {
+    const reqId = ++availReqRef.current;
+    fetch(`/api/availability/${handle}?duration=${duration}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Not found');
+        return res.json() as Promise<AvailabilityResponse>;
+      })
+      .then(availData => {
+        if (reqId !== availReqRef.current) return; // a newer request superseded this one
+        setAvailability(availData);
+        setSelectedSlot(null);
+        // Keep the current day if it still has slots, else fall back to the first open day.
+        setSelectedDate(prev =>
+          prev && availData.days.some(d => d.date === prev)
+            ? prev
+            : availData.days.length > 0
+            ? availData.days[0].date
+            : null
+        );
+        setPageState(prev => (prev === 'success' ? prev : 'select-time'));
       })
       .catch(() => {
+        if (reqId !== availReqRef.current) return;
         setErrorMessage(`We couldn't find @${handle}.`);
         setPageState('error');
       });
-  }, [handle]);
+  }, [handle, duration]);
 
   // Sticky CTA observer — show once user has scrolled past the hero.
   // The heroRef.current guard ensures this only activates after the hero
@@ -206,6 +224,8 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
                 onSelectDate={setSelectedDate}
                 selectedSlot={selectedSlot}
                 onSelectSlot={handleSlotSelect}
+                duration={duration}
+                onChangeDuration={setDuration}
               />
             )}
 
@@ -216,6 +236,7 @@ export function AvailabilityPageClient({ handle }: AvailabilityPageClientProps) 
                   handle={handle}
                   date={selectedDate}
                   startTime={selectedSlot}
+                  durationMinutes={duration}
                   onSuccess={handleSuccess}
                   onBack={handleBack}
                 />

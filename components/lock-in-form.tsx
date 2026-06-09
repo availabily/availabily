@@ -2,19 +2,20 @@
 
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { formatTime, formatDateDisplay, formatFullDay, toE164, isValidE164 } from '@/lib/utils';
+import { formatTime, formatDateDisplay, formatFullDay, toE164, isValidE164, addMinutesToTime } from '@/lib/utils';
 import { cn } from '@/lib/cn';
 
 interface LockInFormProps {
   handle: string;
   date: string;
   startTime: string;
+  durationMinutes: number;
   onSuccess: () => void;
   onBack: () => void;
   className?: string;
 }
 
-export function LockInForm({ handle, date, startTime, onSuccess, onBack, className }: LockInFormProps) {
+export function LockInForm({ handle, date, startTime, durationMinutes, onSuccess, onBack, className }: LockInFormProps) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -57,6 +58,7 @@ export function LockInForm({ handle, date, startTime, onSuccess, onBack, classNa
           handle,
           date,
           start_time: startTime,
+          duration_minutes: durationMinutes,
           visitor_name: name.trim(),
           visitor_email: email.trim(),
           ...(visitor_phone && { visitor_phone }),
@@ -81,6 +83,7 @@ export function LockInForm({ handle, date, startTime, onSuccess, onBack, classNa
 
   const dayName = formatFullDay(date);
   const timeLabel = formatTime(startTime);
+  const endLabel = formatTime(addMinutesToTime(startTime, durationMinutes));
   const submitLabel = `Request ${dayName} at ${timeLabel}`;
 
   return (
@@ -105,7 +108,7 @@ export function LockInForm({ handle, date, startTime, onSuccess, onBack, classNa
             Selected time
           </p>
           <p className="text-sm font-bold text-brand-900 mt-0.5 truncate">
-            {formatDateDisplay(date)} · {timeLabel}
+            {formatDateDisplay(date)} · {timeLabel} – {endLabel}
           </p>
         </div>
         <button
@@ -152,11 +155,11 @@ export function LockInForm({ handle, date, startTime, onSuccess, onBack, classNa
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="lockin-note" className="text-sm font-medium text-slate-700">
-            Add a note (optional)
+            Location / additional information (optional)
           </label>
           <textarea
             id="lockin-note"
-            placeholder="Anything they should know — parking, pets, special requests…"
+            placeholder="Location / additional information"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={200}
