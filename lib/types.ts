@@ -8,6 +8,13 @@ export interface User {
   // backward compatibility with rows created before migration 009.
   manage_token: string | null;
   created_at: string;
+  // Platform-side $4.99/mo subscription (lowers the per-invoice application fee).
+  // Distinct from Stripe Connect. Optional in TS for rows/literals predating
+  // migration 012; absent/'none' means not subscribed.
+  subscription_status?: string;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  subscription_current_period_end?: string | null;
 }
 
 export interface TimeRule {
@@ -29,6 +36,9 @@ export interface Meeting {
   start_time: string;
   end_time: string;
   duration_minutes: number;
+  // 'consultation' = no quote/invoice/payment; 'quoted_service' = the full
+  // quote → invoice → payment flow. Chosen by the owner when accepting.
+  booking_type: 'consultation' | 'quoted_service';
   visitor_name: string;
   visitor_phone: string;
   visitor_email: string | null;

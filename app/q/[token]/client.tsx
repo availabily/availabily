@@ -24,7 +24,11 @@ interface QuotePageClientProps {
   ownerProfile: Profile | null;
   stripeStatus: StripeStatus | null;
   paymentsEnabled: boolean;
+  subscribed: boolean;
+  startQuoted: boolean;
 }
+
+type BookingChoice = 'unset' | 'quoted_service';
 
 type GateStep = 'profile' | 'connect' | 'verifying' | 'ready';
 
@@ -482,11 +486,126 @@ function QuoteForm({
   );
 }
 
+function BookingTypeChooser({
+  onConsultation,
+  onQuoted,
+  accepting,
+  error,
+}: {
+  onConsultation: () => void;
+  onQuoted: () => void;
+  accepting: boolean;
+  error: string;
+}) {
+  return (
+    <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6">
+      <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.14em] mb-1">
+        New booking
+      </p>
+      <h2 className="font-display text-2xl font-bold text-slate-900 mb-1">
+        What kind of booking is this?
+      </h2>
+      <p className="text-sm text-slate-500 mb-5">
+        You can pick a different type for every booking.
+      </p>
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={onConsultation}
+          disabled={accepting}
+          className={cn(
+            'w-full text-left rounded-2xl border border-slate-200 bg-white px-4 py-4',
+            'transition-all duration-200 hover:border-brand-300 hover:bg-brand-50',
+            'focus:outline-none focus:ring-2 focus:ring-brand-500',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+          )}
+        >
+          <span className="block text-sm font-bold text-slate-900">
+            {accepting ? 'Confirming…' : 'Consultation / meeting'}
+          </span>
+          <span className="block text-xs text-slate-500 mt-0.5">
+            No quote, no payment — just confirm the time. Discovery call, site survey, free consult.
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={onQuoted}
+          disabled={accepting}
+          className={cn(
+            'w-full text-left rounded-2xl border border-slate-200 bg-white px-4 py-4',
+            'transition-all duration-200 hover:border-brand-300 hover:bg-brand-50',
+            'focus:outline-none focus:ring-2 focus:ring-brand-500',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+          )}
+        >
+          <span className="block text-sm font-bold text-slate-900">Quoted service</span>
+          <span className="block text-xs text-slate-500 mt-0.5">
+            Send a price and collect payment after the appointment.
+          </span>
+        </button>
+      </div>
+      {error && (
+        <div className="mt-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SubscriptionUpsell({
+  ownerPhone,
+  token,
+  onContinue,
+}: {
+  ownerPhone: string;
+  token: string | null;
+  onContinue: () => void;
+}) {
+  const href = `/api/subscribe/start?phone=${encodeURIComponent(ownerPhone)}&token=${encodeURIComponent(token ?? '')}`;
+  return (
+    <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6">
+      <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-[0.14em] mb-1">
+        AM or PM? Pro
+      </p>
+      <h2 className="font-display text-2xl font-bold text-slate-900 mb-2">
+        Pay 4% instead of 7%
+      </h2>
+      <p className="text-sm text-slate-500 mb-5">
+        Subscribe for <span className="font-semibold text-slate-700">$4.99/mo</span> and the platform
+        fee on every paid booking drops from 7% to 4%. Cancel anytime.
+      </p>
+      <a
+        href={href}
+        className={cn(
+          'w-full rounded-2xl bg-brand-600 text-white font-semibold text-base px-6 py-3.5',
+          'transition-all duration-200 hover:bg-brand-700 active:scale-[0.98]',
+          'shadow-[0_10px_24px_-8px_rgba(91,76,255,0.45)]',
+          'inline-flex items-center justify-center',
+        )}
+      >
+        Subscribe — $4.99/mo →
+      </a>
+      <div className="mt-3 flex justify-center">
+        <button
+          type="button"
+          onClick={onContinue}
+          className="text-sm text-slate-400 hover:text-slate-600 underline underline-offset-2"
+        >
+          Continue at 7%
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function QuotePageClient({
   meeting: initialMeeting,
   ownerProfile: initialProfile,
   stripeStatus: initialStripe,
   paymentsEnabled: initialPaymentsEnabled,
+  subscribed,
+  startQuoted,
 }: QuotePageClientProps) {
   const [meeting, setMeeting] = useState<Meeting>(initialMeeting);
   const [profile, setProfile] = useState<Profile | null>(initialProfile);
@@ -495,6 +614,40 @@ export function QuotePageClient({
   const [gateStep, setGateStep] = useState<GateStep>(
     () => computeGateStep(initialProfile, initialStripe, initialPaymentsEnabled)
   );
+  // Owner first picks a booking type; quoted-service then runs the existing gate.
+  const [bookingChoice, setBookingChoice] = useState<BookingChoice>(
+    startQuoted ? 'quoted_service' : 'unset'
+  );
+  const [upsellDismissed, setUpsellDismissed] = useState(false);
+  const [acceptingConsult, setAcceptingConsult] = useState(false);
+  const [consultError, setConsultError] = useState('');
+
+  async function handleAcceptConsultation() {
+    setAcceptingConsult(true);
+    setConsultError('');
+    try {
+      const res = await fetch('/api/accept-meeting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: meeting.quote_token }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setConsultError(data.error || 'Something went wrong. Please try again.');
+        return;
+      }
+      setMeeting(prev => ({
+        ...prev,
+        status: 'confirmed',
+        booking_type: 'consultation',
+        customer_confirmed_at: new Date().toISOString(),
+      }));
+    } catch {
+      setConsultError('Network error. Please try again.');
+    } finally {
+      setAcceptingConsult(false);
+    }
+  }
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -586,36 +739,69 @@ export function QuotePageClient({
 
           {/* ── Gate + status-driven second card ── */}
 
-          {meeting.status === 'pending' && gateStep === 'profile' && (
-            <ProfileGate
-              ownerProfile={profile}
-              ownerPhone={meeting.user_phone}
-              onComplete={handleProfileComplete}
+          {/* Step 1: owner picks a booking type */}
+          {meeting.status === 'pending' && bookingChoice === 'unset' && (
+            <BookingTypeChooser
+              onConsultation={handleAcceptConsultation}
+              onQuoted={() => setBookingChoice('quoted_service')}
+              accepting={acceptingConsult}
+              error={consultError}
             />
           )}
 
-          {meeting.status === 'pending' && gateStep === 'connect' && (
-            <ConnectGate ownerPhone={meeting.user_phone} onSkipped={handlePaymentSkip} />
-          )}
+          {/* Step 2: quoted-service → $4.99 upsell (soft) then the existing gate */}
+          {meeting.status === 'pending' && bookingChoice === 'quoted_service' && (
+            <>
+              <div className="-mb-1">
+                <button
+                  type="button"
+                  onClick={() => { setBookingChoice('unset'); setUpsellDismissed(false); }}
+                  className="text-sm text-slate-400 hover:text-slate-600 underline underline-offset-2"
+                >
+                  ← Choose a different booking type
+                </button>
+              </div>
 
-          {meeting.status === 'pending' && gateStep === 'verifying' && (
-            <VerifyingGate ownerPhone={meeting.user_phone} onReady={handleStripeReady} />
-          )}
-
-          {meeting.status === 'pending' && gateStep === 'ready' && (
-            <QuoteForm
-              meeting={meeting}
-              paymentsEnabled={paymentsEnabled}
-              onQuoted={(amountCents, description) => {
-                setMeeting(prev => ({
-                  ...prev,
-                  status: 'quoted',
-                  quote_amount_cents: amountCents,
-                  quote_description: description,
-                  quoted_at: new Date().toISOString(),
-                }));
-              }}
-            />
+              {!subscribed && !upsellDismissed ? (
+                <SubscriptionUpsell
+                  ownerPhone={meeting.user_phone}
+                  token={meeting.quote_token}
+                  onContinue={() => setUpsellDismissed(true)}
+                />
+              ) : (
+                <>
+                  {gateStep === 'profile' && (
+                    <ProfileGate
+                      ownerProfile={profile}
+                      ownerPhone={meeting.user_phone}
+                      onComplete={handleProfileComplete}
+                    />
+                  )}
+                  {gateStep === 'connect' && (
+                    <ConnectGate ownerPhone={meeting.user_phone} onSkipped={handlePaymentSkip} />
+                  )}
+                  {gateStep === 'verifying' && (
+                    <VerifyingGate ownerPhone={meeting.user_phone} onReady={handleStripeReady} />
+                  )}
+                  {gateStep === 'ready' && (
+                    <QuoteForm
+                      meeting={meeting}
+                      paymentsEnabled={paymentsEnabled}
+                      onQuoted={(amountCents, description) => {
+                        setMeeting(prev => ({
+                          ...prev,
+                          status: 'quoted',
+                          booking_type: 'quoted_service',
+                          quote_amount_cents: amountCents,
+                          quote_description: description,
+                          quoted_at: new Date().toISOString(),
+                        }));
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </>
           )}
 
           {/* quoted → quote sent */}
@@ -659,14 +845,21 @@ export function QuotePageClient({
                 </p>
               </div>
               <h2 className="font-display text-xl font-bold text-slate-900 mb-1">
-                {firstName} accepted — you&apos;re booked for {formatDateDisplay(meeting.meeting_date)}{' '}
-                at {formatTime(meeting.start_time)}
+                {meeting.booking_type === 'consultation'
+                  ? `Meeting confirmed for ${formatDateDisplay(meeting.meeting_date)} at ${formatTime(meeting.start_time)}`
+                  : `${firstName} accepted — you're booked for ${formatDateDisplay(meeting.meeting_date)} at ${formatTime(meeting.start_time)}`}
               </h2>
-              {meeting.quote_amount_cents && (
+              {meeting.booking_type === 'consultation' ? (
                 <p className="text-sm text-slate-500 mt-2">
-                  {formatAmountCents(meeting.quote_amount_cents)} ·{' '}
-                  {paymentsEnabled ? 'invoice will be sent after the appointment' : 'payment collected separately'}
+                  No payment needed — this is a consultation.
                 </p>
+              ) : (
+                meeting.quote_amount_cents && (
+                  <p className="text-sm text-slate-500 mt-2">
+                    {formatAmountCents(meeting.quote_amount_cents)} ·{' '}
+                    {paymentsEnabled ? 'invoice will be sent after the appointment' : 'payment collected separately'}
+                  </p>
+                )
               )}
               <div className="mt-5 pt-4 border-t border-slate-100">
                 <Link
@@ -709,17 +902,23 @@ export function QuotePageClient({
                 {statusBadge(meeting.status)}
               </p>
               <h2 className="font-display text-xl font-bold text-slate-900 mb-2">
-                This booking has already wrapped up.
+                {meeting.booking_type === 'consultation'
+                  ? 'This meeting is complete.'
+                  : 'This booking has already wrapped up.'}
               </h2>
-              {meeting.quote_amount_cents && (
-                <p className="text-sm text-slate-500">
-                  {formatAmountCents(meeting.quote_amount_cents)} ·{' '}
-                  {meeting.status === 'paid'
-                    ? 'Payment received'
-                    : meeting.status === 'invoiced'
-                    ? 'Invoice sent'
-                    : 'Appointment complete'}
-                </p>
+              {meeting.booking_type === 'consultation' ? (
+                <p className="text-sm text-slate-500">Consultation — no payment.</p>
+              ) : (
+                meeting.quote_amount_cents && (
+                  <p className="text-sm text-slate-500">
+                    {formatAmountCents(meeting.quote_amount_cents)} ·{' '}
+                    {meeting.status === 'paid'
+                      ? 'Payment received'
+                      : meeting.status === 'invoiced'
+                      ? 'Invoice sent'
+                      : 'Appointment complete'}
+                  </p>
+                )
               )}
             </div>
           )}

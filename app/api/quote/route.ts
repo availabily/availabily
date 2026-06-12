@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
   if (isDemo) {
     demoStore.updateMeeting(meeting.id, {
       status: 'quoted',
+      booking_type: 'quoted_service',
       quote_amount_cents: amount_cents,
       quote_description: descriptionValue,
       quoted_at: quotedAt,
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
       .from('meetings')
       .update({
         status: 'quoted',
+        booking_type: 'quoted_service',
         quote_amount_cents: amount_cents,
         quote_description: descriptionValue,
         quoted_at: quotedAt,

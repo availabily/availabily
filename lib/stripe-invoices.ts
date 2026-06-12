@@ -4,6 +4,7 @@ import { createServerClient } from './supabase';
 import { isDemo, getStripe } from './stripe';
 import { sendEmail, smsBodyToHtml } from './email';
 import { ownerDisplayName } from './owner-display';
+import { applicationFeePercentFor } from './subscription';
 import { formatDollars, formatDateDisplay, formatShortDay, formatTime } from './utils';
 
 function getBaseUrl(): string {
@@ -202,7 +203,8 @@ export async function createInvoiceForMeeting(meetingId: string): Promise<{
   }
 
   // ── Step 4: Application fee ───────────────────────────────────────────────
-  const feePercent = parseFloat(process.env.STRIPE_APPLICATION_FEE_PERCENT || '5');
+  // Subscribers on the $4.99/mo plan pay a lower platform fee (4% vs 7%).
+  const feePercent = applicationFeePercentFor(user);
   const applicationFeeAmount = Math.round((meeting.quote_amount_cents ?? 0) * (feePercent / 100));
 
   // ── Step 5–8: Build invoice content ──────────────────────────────────────

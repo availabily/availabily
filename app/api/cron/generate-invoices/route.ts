@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
     .from('meetings')
     .select('*')
     .eq('status', 'completed')
+    .neq('booking_type', 'consultation') // consultations have no quote/invoice/payment
     .is('stripe_invoice_id', null)
     .is('summary_sent_at', null)
     .gt('ends_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
@@ -176,7 +177,13 @@ async function runDemoCron(
 
   // Phase B — re-read after phase A mutations
   for (const m of demoStore.getAllMeetings()) {
-    if (m.status === 'completed' && m.stripe_invoice_id == null && m.summary_sent_at == null && m.ends_at) {
+    if (
+      m.status === 'completed' &&
+      m.booking_type !== 'consultation' && // consultations have no quote/invoice/payment
+      m.stripe_invoice_id == null &&
+      m.summary_sent_at == null &&
+      m.ends_at
+    ) {
       const endsAt = new Date(m.ends_at);
       // Window MUST match Phase A (30 days) so completed meetings are never stranded.
       if (endsAt > thirtyDaysAgo) {

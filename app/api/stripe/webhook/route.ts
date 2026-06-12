@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
 import { refreshAccountStatus } from '@/lib/stripe-connect';
+import { applySubscriptionUpdate } from '@/lib/subscription';
 import { ownerDisplayName } from '@/lib/owner-display';
 import { formatDollars, formatShortDay, formatTime } from '@/lib/utils';
 import { sendEmail, smsBodyToHtml } from '@/lib/email';
@@ -130,6 +131,27 @@ async function handleEvent(event: Stripe.Event) {
         .from('meetings')
         .update({ payment_failure_notified_at: new Date().toISOString() })
         .eq('id', meeting.id);
+      break;
+    }
+
+    // ── Owner $4.99/mo platform subscription (platform-account events) ──
+    case 'customer.subscription.created':
+    case 'customer.subscription.updated':
+    case 'customer.subscription.deleted': {
+      const sub = event.data.object as Stripe.Subscription;
+      const userPhone = sub.metadata?.platform_user_phone;
+      if (!userPhone) break;
+      const status = event.type === 'customer.subscription.deleted' ? 'canceled' : sub.status;
+      const periodEnd =
+        'current_period_end' in sub && sub.current_period_end
+          ? (sub.current_period_end as number)
+          : null;
+      await applySubscriptionUpdate({
+        userPhone,
+        status,
+        subscriptionId: sub.id,
+        currentPeriodEnd: periodEnd,
+      });
       break;
     }
 

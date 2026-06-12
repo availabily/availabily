@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
       start_time,
       end_time,
       duration_minutes,
+      booking_type: 'quoted_service',
       visitor_name,
       visitor_phone: visitor_phone ?? '',
       visitor_email: visitor_email ?? null,
