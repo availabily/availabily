@@ -19,12 +19,30 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.text();
-  let event: Stripe.Event;
-  try {
-    const stripe = getStripe();
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
-  } catch (err) {
-    console.error('Webhook signature verification failed:', err);
+  const stripe = getStripe();
+
+  // Two Stripe destinations point at this one URL, each with its own signing
+  // secret: STRIPE_WEBHOOK_SECRET for the Connected-accounts destination
+  // (account.updated, invoice.*) and STRIPE_WEBHOOK_SECRET_ACCOUNT for the
+  // your-account destination (customer.subscription.*, checkout.session.*).
+  // Try each secret; whichever verifies wins.
+  const secrets = [
+    process.env.STRIPE_WEBHOOK_SECRET,
+    process.env.STRIPE_WEBHOOK_SECRET_ACCOUNT,
+  ].filter(Boolean) as string[];
+
+  let event: Stripe.Event | null = null;
+  let lastErr: unknown = null;
+  for (const secret of secrets) {
+    try {
+      event = stripe.webhooks.constructEvent(body, sig, secret);
+      break;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (!event) {
+    console.error('Webhook signature verification failed:', lastErr);
     return NextResponse.json({ error: 'Signature verification failed' }, { status: 400 });
   }
 
