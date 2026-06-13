@@ -708,12 +708,22 @@ export function QuotePageClient({
               {meeting.visitor_name}
             </h1>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-slate-600">
-                <span className="font-medium text-slate-500 w-16 flex-none">Phone</span>
-                <span className="font-semibold text-slate-800">
-                  {formatPhone(meeting.visitor_phone)}
-                </span>
-              </div>
+              {meeting.visitor_phone && (
+                <div className="flex items-center gap-2 text-slate-600">
+                  <span className="font-medium text-slate-500 w-16 flex-none">Phone</span>
+                  <span className="font-semibold text-slate-800">
+                    {formatPhone(meeting.visitor_phone)}
+                  </span>
+                </div>
+              )}
+              {meeting.visitor_email && (
+                <div className="flex items-center gap-2 text-slate-600">
+                  <span className="font-medium text-slate-500 w-16 flex-none">Email</span>
+                  <span className="font-semibold text-slate-800 break-all">
+                    {meeting.visitor_email}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center gap-2 text-slate-600">
                 <span className="font-medium text-slate-500 w-16 flex-none">Date</span>
                 <span className="font-semibold text-slate-800">

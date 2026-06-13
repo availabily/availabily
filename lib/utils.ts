@@ -2,7 +2,10 @@
  * Format a phone number from E.164 to a readable format
  * e.g., +18085553434 -> 808-555-3434
  */
-export function formatPhone(phone: string): string {
+export function formatPhone(phone: string | null | undefined): string {
+  // Phone is optional on a booking — guard against null/undefined so callers
+  // can render it directly without crashing the page.
+  if (!phone) return '';
   const digits = phone.replace(/\D/g, '');
   if (digits.length === 11 && digits.startsWith('1')) {
     const num = digits.slice(1);

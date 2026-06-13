@@ -134,7 +134,8 @@ export async function POST(request: NextRequest) {
       visitor_phone ? `${visitor_name} – ${formatPhone(visitor_phone)}` : visitor_name,
       visitor_address ? `Note: ${visitor_address}` : null,
       `Email: ${visitor_email}`,
-      `Manage: ${baseUrl}/q/${quote_token}`,
+      'Tap to accept or send a quote:',
+      `${baseUrl}/q/${quote_token}`,
     ].filter(Boolean).join('\n');
     const ownerEmail: string | null = user.email ?? null;
     if (!ownerEmail) {
@@ -244,7 +245,8 @@ export async function POST(request: NextRequest) {
     visitor_phone ? `${visitor_name} – ${formatPhone(visitor_phone)}` : visitor_name,
     visitor_address ? `Note: ${visitor_address}` : null,
     `Email: ${visitor_email}`,
-    `Manage: ${baseUrl}/q/${quote_token}`,
+    'Tap to accept or send a quote:',
+    `${baseUrl}/q/${quote_token}`,
   ].filter(Boolean).join('\n');
 
   // Send owner and visitor notifications independently so a failure in one

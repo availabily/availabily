@@ -40,7 +40,7 @@ export interface Meeting {
   // quote → invoice → payment flow. Chosen by the owner when accepting.
   booking_type: 'consultation' | 'quoted_service';
   visitor_name: string;
-  visitor_phone: string;
+  visitor_phone: string | null; // optional at booking time; null when not provided
   visitor_email: string | null;
   note: string | null; // stores visitor_address for backward compatibility
   status:
