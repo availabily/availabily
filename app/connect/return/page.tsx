@@ -5,13 +5,14 @@ import { isValidE164 } from '@/lib/utils';
 export default async function ConnectReturnPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string }>;
+  searchParams: Promise<{ phone?: string; error?: string }>;
 }) {
-  const { phone = '' } = await searchParams;
+  const { phone = '', error = '' } = await searchParams;
   const status = isValidE164(phone) ? await getAccountStatus(phone) : null;
 
   const charges_enabled = status?.charges_enabled ?? false;
   const details_submitted = status?.details_submitted ?? false;
+  const hasError = error === 'connect';
   const encodedPhone = encodeURIComponent(phone);
 
   return (
@@ -29,7 +30,27 @@ export default async function ConnectReturnPage({
         </div>
 
         <div className="bg-white rounded-[24px] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6">
-          {charges_enabled ? (
+          {hasError ? (
+            <>
+              <p className="text-[11px] font-semibold text-amber-600 uppercase tracking-[0.14em] mb-1">
+                Payments unavailable
+              </p>
+              <h1 className="font-display text-2xl font-bold text-slate-900 mb-3">
+                We couldn&apos;t start payment setup
+              </h1>
+              <p className="text-sm text-slate-500 mb-4">
+                Card payments aren&apos;t available just yet. You can still confirm this
+                booking as a consultation, or collect payment yourself — head back to the
+                booking link in your email and choose how you&apos;d like to handle it.
+              </p>
+              <a
+                href={`/api/connect/start?phone=${encodedPhone}`}
+                className="inline-flex items-center justify-center w-full rounded-2xl border border-slate-200 bg-white text-slate-700 font-semibold text-base px-6 py-3.5 transition-all duration-200 hover:bg-slate-50"
+              >
+                Try again →
+              </a>
+            </>
+          ) : charges_enabled ? (
             <>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center flex-none">

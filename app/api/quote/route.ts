@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     });
   } else {
     const supabase = createServerClient();
-    const { data: updated } = await supabase
+    const { data: updated, error: updateError } = await supabase
       .from('meetings')
       .update({
         status: 'quoted',
@@ -67,6 +67,16 @@ export async function POST(request: NextRequest) {
       .eq('status', 'pending')
       .select('id')
       .maybeSingle();
+
+    // A real DB error (missing column, failed constraint, connectivity) must
+    // surface as a 500 — never be silently reported as "Already handled".
+    if (updateError) {
+      console.error('[quote] failed to record quote for meeting', meeting.id, updateError);
+      return NextResponse.json(
+        { error: 'Could not send the quote. Please try again.' },
+        { status: 500 },
+      );
+    }
 
     if (!updated) {
       const { data: current } = await supabase

@@ -47,13 +47,24 @@ export async function POST(request: NextRequest) {
     });
   } else {
     const supabase = createServerClient();
-    const { data: updated } = await supabase
+    const { data: updated, error: updateError } = await supabase
       .from('meetings')
       .update({ status: 'confirmed', booking_type: 'consultation', customer_confirmed_at: now })
       .eq('id', meeting.id)
       .eq('status', 'pending')
       .select('id')
       .maybeSingle();
+
+    // A real DB error (missing column, failed constraint, connectivity) must
+    // surface as a 500 — never be silently reported as "Already handled", which
+    // hides the failure and dead-ends the owner.
+    if (updateError) {
+      console.error('[accept-meeting] failed to confirm meeting', meeting.id, updateError);
+      return NextResponse.json(
+        { error: 'Could not accept this booking. Please try again.' },
+        { status: 500 },
+      );
+    }
 
     if (!updated) {
       const { data: current } = await supabase
